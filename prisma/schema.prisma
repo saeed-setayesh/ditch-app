@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth.js models ────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // hashed via bcryptjs – null for OAuth users
+  tier          String    @default("free")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  pushSubscriptions PushSubscription[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── App models ────────────────────────────────────────────────────
+
+model PushSubscription {
+  id                 String   @id @default(cuid())
+  endpoint           String   @unique
+  p256dh             String
+  auth               String
+  deviceId           String?
+  userId             String?
+  lastLat            Float?
+  lastLng            Float?
+  radiusKm           Float    @default(2)
+  incidentTypeFilter String?
+  severityMin        Int?
+  quietHoursStart    String?
+  quietHoursEnd      String?
+  cityId             String?
+  tier               String   @default("free")
+  minTowScore        Int?
+  /// Comma-separated list of incident sources the user prefers: e.g. "tomtom", "511on", or "tomtom,511on"
+  incidentSources    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("push_subscriptions")
+}
+
+model NotificationLog {
+  id               String   @id @default(cuid())
+  subscriptionId   String
+  incidentId       String
+  createdAt        DateTime @default(now())
+
+  @@unique([subscriptionId, incidentId])
+  @@map("notification_logs")
+}
+
+model IncidentSnapshot {
+  id             String    @id @default(cuid())
+  externalId     String
+  lat            Float
+  lng            Float
+  city           String
+  iconCategory   Int
+  magnitudeOfDelay Int?
+  description    String?
+  from_          String?   @map("from_")
+  to_            String?   @map("to_")
+  startTime      DateTime?
+  endTime        DateTime?
+  fetchedAt      DateTime  @default(now())
+
+  @@index([city, fetchedAt])
+  @@index([externalId, fetchedAt])
+  @@map("incident_snapshots")
+}
+
+model TrafficCamera {
+  id          String   @id @default(cuid())
+  externalId  String   @unique
+  lat         Float
+  lng         Float
+  name        String
+  roadName    String?
+  intersection String?
+  imageUrl    String
+  city        String   @default("DitchApp")
+  updatedAt   DateTime @updatedAt
+
+  @@index([city])
+  @@index([lat, lng])
+  @@map("traffic_cameras")
+}

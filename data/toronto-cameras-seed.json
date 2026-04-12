@@ -1,0 +1,52 @@
+[
+  {
+    "externalId": "DitchApp-dvp-1",
+    "lat": 43.6789,
+    "lng": -79.3654,
+    "name": "DVP at Don Mills",
+    "roadName": "Don Valley Parkway",
+    "intersection": "Don Mills Rd",
+    "imageUrl": "https://images.511on.ca/camera/cam-08001.jpg",
+    "city": "DitchApp"
+  },
+  {
+    "externalId": "DitchApp-gardiner-1",
+    "lat": 43.6426,
+    "lng": -79.3871,
+    "name": "Gardiner at Spadina",
+    "roadName": "Gardiner Expressway",
+    "intersection": "Spadina Ave",
+    "imageUrl": "https://images.511on.ca/camera/cam-08002.jpg",
+    "city": "DitchApp"
+  },
+  {
+    "externalId": "DitchApp-401-1",
+    "lat": 43.6532,
+    "lng": -79.3832,
+    "name": "Hwy 401 at Yonge",
+    "roadName": "Highway 401",
+    "intersection": "Yonge St",
+    "imageUrl": "https://images.511on.ca/camera/cam-08003.jpg",
+    "city": "DitchApp"
+  },
+  {
+    "externalId": "DitchApp-lakeshore-1",
+    "lat": 43.6356,
+    "lng": -79.4247,
+    "name": "Lakeshore at Park Lawn",
+    "roadName": "Lake Shore Blvd W",
+    "intersection": "Park Lawn Rd",
+    "imageUrl": "https://images.511on.ca/camera/cam-08004.jpg",
+    "city": "DitchApp"
+  },
+  {
+    "externalId": "DitchApp-eglinton-1",
+    "lat": 43.7069,
+    "lng": -79.3989,
+    "name": "Eglinton at Allen",
+    "roadName": "Eglinton Ave W",
+    "intersection": "Allen Rd",
+    "imageUrl": "https://images.511on.ca/camera/cam-08005.jpg",
+    "city": "DitchApp"
+  }
+]
