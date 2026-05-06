@@ -1,15 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  /* Brand — TYPE & COLOR reference */
+  --brand-sky: #3fa7e6;
+  --brand-deep: #1f6fb2;
+  --brand-ink: #0b3354;
+  --brand-ice: #e8f4fc;
+  --brand-paper: #ffffff;
+
+  --background: var(--brand-ice);
+  --foreground: var(--brand-ink);
+  --muted: rgba(11, 51, 84, 0.6);
+  --muted-strong: rgba(11, 51, 84, 0.45);
+  --border: rgba(11, 51, 84, 0.12);
+  --border-subtle: #f0f7fc;
+  --cta: var(--brand-sky);
+  --cta-hover: var(--brand-deep);
+  --online-pill: var(--brand-sky);
+
+  /* Incident pins (KIND alignment with ditchappmobile) */
+  --pin-accident: #f38a1f;
+  --pin-collision: #22b86c;
+  --pin-fire: #e63946;
+  --pin-hazard: #f4c430;
+  --pin-jam: #8c4fcf;
+  --pin-medical: #e63946;
+  --pin-police: var(--brand-sky);
+  --pin-weather: #28c6c8;
+
+  /* Dark mode surfaces (dashboard map overlays) */
+  --dark-bg: #071a2e;
+  --dark-surface: var(--brand-ink);
+  --dark-surface-2: #0f3d66;
+  --dark-line: rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sky: var(--brand-sky);
+  --color-deep: var(--brand-deep);
+  --color-ink: var(--brand-ink);
+  --color-ice: var(--brand-ice);
+  --color-paper: var(--brand-paper);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 @keyframes toastSlideIn {
@@ -23,7 +61,35 @@
   }
 }
 
-html, body {
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ticker-incident {
+  animation: fadeSlide 0.4s ease;
+}
+
+@keyframes da-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+html,
+body {
   height: 100%;
   margin: 0;
 }
@@ -34,3 +100,10 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+.font-mono-brand {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}

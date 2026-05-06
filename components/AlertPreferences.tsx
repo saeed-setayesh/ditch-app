@@ -144,17 +144,17 @@ export default function AlertPreferences({
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <h3 className="font-semibold text-zinc-100">Alert preferences</h3>
+    <div className="space-y-4 p-4">
+      <h3 className="font-display font-bold text-ink">Alert preferences</h3>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           City (alerts & map)
         </label>
         <select
           value={cityId}
           onChange={(e) => setCityId(e.target.value)}
-          className="w-full rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+          className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
         >
           {CITIES.map((c) => (
             <option key={c.id} value={c.id}>
@@ -165,28 +165,28 @@ export default function AlertPreferences({
       </div>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           Plan (for testing)
         </label>
         <select
           value={tier}
           onChange={(e) => setTier(e.target.value as "free" | "pro")}
-          className="w-full rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+          className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
         >
           <option value="free">Free (max 5 km radius)</option>
           <option value="pro">Pro (heatmaps, score filter, max 20 km)</option>
         </select>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="mt-1 text-xs text-muted">
           Changing to Pro instantly unlocks all features (payment integration coming soon)
         </p>
       </div>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           Incident sources
         </label>
-        <div className="flex gap-3 items-center">
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={incidentSources.includes("tomtom")}
@@ -197,13 +197,11 @@ export default function AlertPreferences({
                     : [...prev, "tomtom"],
                 )
               }
-              className="rounded border-zinc-600 bg-zinc-800 text-amber-500"
+              className="rounded border-ink/25 text-sky focus:ring-sky"
             />
-            <span className="text-sm text-zinc-300">
-              TomTom (live incidents)
-            </span>
+            <span className="text-sm text-ink">TomTom (live incidents)</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={incidentSources.includes("511on")}
@@ -214,11 +212,11 @@ export default function AlertPreferences({
                     : [...prev, "511on"],
                 )
               }
-              className="rounded border-zinc-600 bg-zinc-800 text-amber-500"
+              className="rounded border-ink/25 text-sky focus:ring-sky"
             />
-            <span className="text-sm text-zinc-300">Ontario 511</span>
+            <span className="text-sm text-ink">Ontario 511</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
               checked={incidentSources.includes("inrix")}
@@ -229,18 +227,18 @@ export default function AlertPreferences({
                     : [...prev, "inrix"],
                 )
               }
-              className="rounded border-zinc-600 bg-zinc-800 text-amber-500"
+              className="rounded border-ink/25 text-sky focus:ring-sky"
             />
-            <span className="text-sm text-zinc-300">INRIX (requires API key)</span>
+            <span className="text-sm text-ink">INRIX (requires API key)</span>
           </label>
         </div>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="mt-1 text-xs text-muted">
           Select sources to combine for live incident data. INRIX needs INRIX_APP_ID and INRIX_APP_KEY in .env.
         </p>
       </div>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           Alert radius (km) — max {maxRadius} for {tier}
         </label>
         <input
@@ -252,35 +250,35 @@ export default function AlertPreferences({
           onChange={(e) =>
             setRadiusKm(Math.min(parseFloat(e.target.value) || 2, maxRadius))
           }
-          className="w-full rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+          className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
         />
       </div>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-2">
+        <label className="mb-2 block text-sm text-muted">
           Incident types to alert
         </label>
         <div className="flex flex-wrap gap-2">
           {INCIDENT_TYPE_OPTIONS.map((opt) => (
             <label
               key={opt.value}
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex cursor-pointer items-center gap-2"
             >
               <input
                 type="checkbox"
                 checked={types.includes(opt.value)}
                 onChange={() => toggleType(opt.value)}
-                className="rounded border-zinc-600 bg-zinc-800 text-amber-500"
+                className="rounded border-ink/25 text-sky focus:ring-sky"
               />
-              <span className="text-sm text-zinc-300">{opt.label}</span>
+              <span className="text-sm text-ink">{opt.label}</span>
             </label>
           ))}
         </div>
-        <p className="text-xs text-zinc-500 mt-1">Leave empty for all types.</p>
+        <p className="mt-1 text-xs text-muted">Leave empty for all types.</p>
       </div>
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           Min severity (0–4)
         </label>
         <select
@@ -290,7 +288,7 @@ export default function AlertPreferences({
               e.target.value === "" ? "" : parseInt(e.target.value, 10),
             )
           }
-          className="w-full rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+          className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
         >
           <option value="">Any</option>
           <option value={0}>0 – Unknown</option>
@@ -303,7 +301,7 @@ export default function AlertPreferences({
 
       {tier === "pro" && (
         <div>
-          <label className="block text-sm text-zinc-400 mb-1">
+          <label className="mb-1 block text-sm text-muted">
             Min tow score (Pro) — only alert if incident score ≥
           </label>
           <input
@@ -317,35 +315,35 @@ export default function AlertPreferences({
               )
             }
             placeholder="0–100, e.g. 50"
-            className="w-full rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+            className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
           />
         </div>
       )}
 
       <div>
-        <label className="block text-sm text-zinc-400 mb-1">
+        <label className="mb-1 block text-sm text-muted">
           Quiet hours (no alerts)
         </label>
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <input
             type="time"
             value={quietStart}
             onChange={(e) => setQuietStart(e.target.value)}
-            className="rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+            className="rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
           />
-          <span className="text-zinc-500">to</span>
+          <span className="text-muted">to</span>
           <input
             type="time"
             value={quietEnd}
             onChange={(e) => setQuietEnd(e.target.value)}
-            className="rounded-lg bg-zinc-800 border border-zinc-600 px-3 py-2 text-zinc-100"
+            className="rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
           />
         </div>
       </div>
 
       {message && (
         <p
-          className={`text-sm ${message.includes("saved") ? "text-green-400" : "text-amber-400"}`}
+          className={`text-sm ${message.includes("saved") ? "text-deep" : "text-amber-700"}`}
         >
           {message}
         </p>
@@ -356,7 +354,7 @@ export default function AlertPreferences({
           type="button"
           onClick={save}
           disabled={saving}
-          className="px-4 py-2 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-500 disabled:opacity-50"
+          className="rounded-lg bg-sky px-4 py-2 font-semibold text-paper transition hover:bg-deep disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -364,7 +362,7 @@ export default function AlertPreferences({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-zinc-700 text-zinc-200 hover:bg-zinc-600"
+            className="rounded-lg border border-ink/12 bg-ice/80 px-4 py-2 font-semibold text-ink transition hover:bg-ice"
           >
             Cancel
           </button>

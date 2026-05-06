@@ -132,24 +132,24 @@ export default function PushNotificationManager({ userLocation }: Props) {
   if (subscribed && !message) return null;
 
   return (
-    <div className="fixed bottom-2 left-2 right-2 md:left-auto md:right-4 md:max-w-sm z-30 p-2.5 rounded-lg border border-zinc-700 bg-zinc-900/95 backdrop-blur shadow-lg">
+    <div className="fixed bottom-2 left-2 right-2 z-30 rounded-lg border border-ink/10 bg-paper/95 p-2.5 shadow-lg backdrop-blur md:left-auto md:right-4 md:max-w-sm">
       <div className="flex items-center gap-2">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {message ? (
-            <p className="text-xs text-amber-400">{message}</p>
+            <p className="text-xs font-medium text-amber-800">{message}</p>
           ) : (
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-muted">
               Get push alerts for nearby accidents.
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5">
           {subscribed ? (
             <button
               type="button"
               onClick={unsubscribe}
               disabled={loading}
-              className="px-2 py-1 rounded text-xs font-medium bg-zinc-700 text-zinc-200 hover:bg-zinc-600 disabled:opacity-50"
+              className="rounded px-2 py-1 text-xs font-semibold bg-ice text-ink transition hover:bg-ice/80 disabled:opacity-50"
             >
               {loading ? "…" : "Disable"}
             </button>
@@ -158,7 +158,7 @@ export default function PushNotificationManager({ userLocation }: Props) {
               type="button"
               onClick={subscribe}
               disabled={loading}
-              className="px-2 py-1 rounded text-xs font-medium bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-50"
+              className="rounded bg-sky px-2 py-1 text-xs font-semibold text-paper transition hover:bg-deep disabled:opacity-50"
             >
               {loading ? "…" : "Enable"}
             </button>
@@ -166,7 +166,7 @@ export default function PushNotificationManager({ userLocation }: Props) {
           <button
             type="button"
             onClick={() => setDismissed(true)}
-            className="p-1 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700"
+            className="rounded p-1 text-muted transition hover:bg-ice hover:text-ink"
             title="Dismiss"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>

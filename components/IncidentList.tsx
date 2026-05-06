@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, createElement } from "react";
 import { haversineKm } from "@/lib/geo";
 import { getIconType, getIconComponent } from "./IncidentIcons";
 import { Camera, Info, Clock, Navigation, MapPin } from "lucide-react";
@@ -77,13 +77,12 @@ function IncidentCard({
   const [relativeTime, setRelativeTime] = useState<string>("");
   
   const iconType = getIconType(incident.iconCategory);
-  const IconComponent = getIconComponent(iconType);
   const scoreColor =
     incident.towLabel === "High"
-      ? "bg-emerald-500/20 text-emerald-400"
+      ? "bg-deep/15 text-deep"
       : incident.towLabel === "Medium"
-        ? "bg-amber-500/20 text-amber-400"
-        : "bg-zinc-500/20 text-zinc-400";
+        ? "bg-sky/15 text-deep"
+        : "bg-ink/10 text-muted";
 
   // Update relative time every minute
   useEffect(() => {
@@ -103,63 +102,73 @@ function IncidentCard({
   return (
     <div
       data-incident-id={incident.id}
-      className={`w-full text-left rounded-xl transition-all duration-200 border ${
+      className={`w-full border-b border-ink/[0.06] text-left transition-colors duration-150 ${
         isSelected
-          ? "border-amber-500 bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-500/30"
-          : "border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/90 hover:bg-zinc-100 dark:hover:bg-zinc-700/90 hover:border-zinc-300 dark:hover:border-zinc-600"
+          ? "bg-sky/[0.08]"
+          : "bg-transparent hover:bg-ice/80"
       }`}
     >
-      {/* Clickable selection area */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => onSelect(incident.id)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(incident.id); } }}
-        className="p-3 cursor-pointer"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(incident.id);
+          }
+        }}
+        className="cursor-pointer px-4 py-3.5"
       >
         <div className="flex items-start gap-3">
-          <div className="shrink-0">
-            <IconComponent size={40} />
+          <div className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.14)] [&_svg]:h-full [&_svg]:w-full">
+            {createElement(getIconComponent(iconType), { size: 38 })}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm flex-1 min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <p className="min-w-0 flex-1 text-[15px] font-bold leading-tight text-ink">
                 {incident.description}
               </p>
-              <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex flex-wrap items-center gap-1">
                 {incident.sources && incident.sources.length > 0 && (
                   <>
                     {incident.sources.map((s) => (
                       <span
                         key={s}
-                        className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 font-mono-brand text-[10px] font-medium ${
                           s === "tomtom"
-                            ? "bg-blue-500/20 text-blue-300"
+                            ? "bg-sky/15 text-deep"
                             : s === "511on"
-                              ? "bg-emerald-500/20 text-emerald-300"
+                              ? "bg-deep/10 text-deep"
                               : s === "inrix"
-                                ? "bg-violet-500/20 text-violet-300"
-                                : "bg-zinc-500/20 text-zinc-300"
+                                ? "bg-ink/10 text-muted"
+                                : "bg-ink/10 text-muted"
                         }`}
                       >
-                        {s === "tomtom" ? "TomTom" : s === "511on" ? "511" : s === "inrix" ? "INRIX" : s}
+                        {s === "tomtom"
+                          ? "TomTom"
+                          : s === "511on"
+                            ? "511"
+                            : s === "inrix"
+                              ? "INRIX"
+                              : s}
                       </span>
                     ))}
                   </>
                 )}
                 {incident.towLabel != null && (
                   <span
-                    className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium ${scoreColor}`}
+                    className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${scoreColor}`}
                   >
                     {incident.towLabel}
                   </span>
                 )}
                 {incident.status != null && (
                   <span
-                    className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                    className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
                       incident.status === "active"
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-zinc-500/20 text-zinc-500"
+                        ? "bg-sky/20 text-deep"
+                        : "bg-ink/10 text-muted"
                     }`}
                   >
                     {incident.status === "active" ? "Active" : "Cleared"}
@@ -168,44 +177,45 @@ function IncidentCard({
               </div>
             </div>
             {(incident.from || incident.to) && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate font-medium mb-1">
+              <p className="mb-1 truncate text-sm font-medium text-muted">
                 {[incident.from, incident.to].filter(Boolean).join(" → ")}
               </p>
             )}
-            <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-500 mt-1">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+              <div className="flex flex-wrap items-center gap-2">
                 {distanceKm != null && (
-                  <span className="font-medium">
+                  <span className="font-mono-brand font-medium text-deep">
                     {distanceKm < 1
                       ? `${(distanceKm * 1000).toFixed(0)}m away`
                       : `${distanceKm.toFixed(1)}km`}
                   </span>
                 )}
                 {relativeTime && (
-                  <span className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
-                    <Clock className="w-3 h-3" />
+                  <span className="flex items-center gap-1 italic text-muted">
+                    <Clock className="h-3 w-3" />
                     {relativeTime}
                   </span>
                 )}
               </div>
               {incident.etaMinutes != null && incident.etaMinutes >= 0 && (
-                <span className="text-zinc-700 dark:text-zinc-400 font-medium">~{incident.etaMinutes} min</span>
+                <span className="font-mono-brand font-semibold text-ink">
+                  ~{incident.etaMinutes} min
+                </span>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action buttons — separate from the selection area */}
       {isSelected && (
-        <div className="px-3 pb-3 pt-2 flex flex-wrap items-center gap-2 border-t border-zinc-200 dark:border-zinc-700/50 mt-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-ink/[0.06] px-4 pb-3 pt-2">
           {onNavigate && (
             <button
               type="button"
               onClick={() => onNavigate(incident)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30 transition-colors"
+              className="flex items-center gap-1.5 rounded-[10px] bg-sky/15 px-3 py-1.5 text-xs font-semibold text-deep transition hover:bg-sky/25"
             >
-              <Navigation className="w-3.5 h-3.5" />
+              <Navigation className="h-3.5 w-3.5" />
               Directions
             </button>
           )}
@@ -213,41 +223,40 @@ function IncidentCard({
             <button
               type="button"
               onClick={() => onNavigateWaze(incident)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/30 transition-colors"
+              className="flex items-center gap-1.5 rounded-[10px] bg-deep/10 px-3 py-1.5 text-xs font-semibold text-deep transition hover:bg-deep/15"
               title="Open in Waze"
             >
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="h-3.5 w-3.5" />
               Waze
             </button>
           )}
-          {onViewCamera && (
-            tier === "pro" && isHighSeverity(incident) ? (
+          {onViewCamera &&
+            (tier === "pro" && isHighSeverity(incident) ? (
               <button
                 type="button"
                 onClick={() => onViewCamera(incident)}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                className="flex items-center gap-1.5 rounded-[10px] bg-deep/10 px-3 py-1.5 text-xs font-semibold text-deep transition hover:bg-deep/15"
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="h-3.5 w-3.5" />
                 Camera
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => onViewCamera(incident)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-colors"
+                className="flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-semibold text-muted transition hover:bg-ice"
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="h-3.5 w-3.5" />
                 Camera
               </button>
-            )
-          )}
+            ))}
           {onShowDetails && (
             <button
               type="button"
               onClick={() => onShowDetails(incident)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 px-3 py-1.5 rounded-lg hover:bg-sky-500/10 transition-colors"
+              className="flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-semibold text-deep transition hover:bg-sky/10"
             >
-              <Info className="w-3.5 h-3.5" />
+              <Info className="h-3.5 w-3.5" />
               Details
             </button>
           )}
@@ -282,7 +291,7 @@ export default function IncidentList({
   tier,
   loading,
 }: IncidentListProps) {
-  const [typeFilter, setTypeFilter] = useState(INCIDENT_FILTER_OPTIONS[0]);
+  const typeFilter = INCIDENT_FILTER_OPTIONS[0];
   const [showActive, setShowActive] = useState(true);
 
   const filtered = filterIncidents(incidents, typeFilter);
@@ -294,11 +303,11 @@ export default function IncidentList({
 
   if (loading) {
     return (
-      <div className="space-y-2 p-2">
+      <div className="space-y-0 p-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-20 rounded-lg bg-zinc-800 animate-pulse"
+            className="mb-2 h-20 animate-pulse rounded-lg bg-ice"
           />
         ))}
       </div>
@@ -306,16 +315,19 @@ export default function IncidentList({
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="shrink-0 px-3 pt-2 pb-2 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center justify-center gap-2 mb-2">
+    <div className="flex h-full min-h-0 flex-col bg-paper">
+      <div className="shrink-0 px-3 pb-2 pt-1">
+        <div
+          className="grid grid-cols-2 gap-0 rounded-[14px] p-1"
+          style={{ background: "rgba(11, 51, 84, 0.06)" }}
+        >
           <button
             type="button"
             onClick={() => setShowActive(true)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-all ${
               showActive
-                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                ? "bg-paper text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
+                : "text-muted"
             }`}
           >
             Active
@@ -323,32 +335,32 @@ export default function IncidentList({
           <button
             type="button"
             onClick={() => setShowActive(false)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-all ${
               !showActive
-                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
-                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                ? "bg-paper text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
+                : "text-muted"
             }`}
           >
             All
           </button>
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto pb-16">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-6">
         {displayedIncidents.length === 0 ? (
-          <div className="p-6 text-center text-zinc-600 dark:text-zinc-500">
-            <p className="text-lg">
+          <div className="p-6 text-center text-muted">
+            <p className="text-lg text-ink">
               {incidents.length === 0
                 ? "No incidents right now"
                 : `No ${typeFilter.label.toLowerCase()} incidents`}
             </p>
-            <p className="text-sm mt-1">
+            <p className="mt-1 text-sm">
               {incidents.length === 0
                 ? "Traffic is clear."
                 : "Try another filter or period."}
             </p>
           </div>
         ) : (
-          <div className="space-y-2 p-3">
+          <div>
             {displayedIncidents.map((inc) => {
               const [lng, lat] = inc.coordinates;
               const distanceKm =

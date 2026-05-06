@@ -490,19 +490,19 @@ export default function Map({
 
   return (
     <div
-      className="w-full rounded-xl overflow-hidden bg-zinc-800 relative"
+      className="relative w-full overflow-hidden rounded-xl bg-[#071a2e]"
       style={{ height: "100%", minHeight: 200 }}
     >
       {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-800/90 z-10 rounded-xl">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-ink/40">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 border-2 border-amber-500/50 border-t-amber-500 rounded-full animate-spin" />
-            <span className="text-sm text-zinc-400">Loading map…</span>
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-sky/30 border-t-sky" />
+            <span className="text-sm text-ice">Loading map…</span>
           </div>
         </div>
       )}
       {heatmapOn && heatmapEmpty && (
-        <div className="absolute bottom-3 left-3 right-3 z-10 rounded-lg bg-zinc-900/95 border border-zinc-600 px-3 py-2 text-sm text-zinc-300 shadow-lg">
+        <div className="absolute bottom-3 left-3 right-3 z-10 rounded-lg border border-white/15 bg-ink/90 px-3 py-2 text-sm text-ice shadow-lg backdrop-blur">
           {heatmapSource === "platform"
             ? "No platform data for this period yet. Switch to Live to see current incidents from TomTom, or run the cron to collect data."
             : "No live incidents in this area right now."}

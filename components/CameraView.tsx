@@ -34,11 +34,12 @@ function imageUrlWithCacheBust(url: string): string {
 }
 
 /** Ontario 511 only provides map/camera page URLs, not direct images; we embed in an iframe. Our proxy redirects to 511. */
-function useIframeForCamera(url: string): boolean {
+function embedCameraAsIframe(url: string): boolean {
   return url.includes("511on.ca") || url.startsWith("/api/cameras/image");
 }
 
 export default function CameraView({ incident, onClose, tier }: Props) {
+  void tier;
   const [cameras, setCameras] = useState<CameraForView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,21 +68,24 @@ export default function CameraView({ incident, onClose, tier }: Props) {
       const list =
         data.cameras ??
         (data.primary ? [data.primary, ...(data.fallbacks ?? [])] : []);
-      const enriched = list.map((c: any) => ({
+      const enriched = list.map((raw: unknown) => {
+        const c = raw as Record<string, unknown>;
+        return {
         id: String(
           c.id ??
             c.cameraId ??
             c.externalId ??
             Math.random().toString(36).slice(2),
         ),
-        name: c.name ?? c.title ?? c.cameraName ?? "Camera",
-        roadName: c.roadName ?? null,
-        intersection: c.intersection ?? null,
-        imageUrl: c.imageUrl ?? c.url ?? c.src ?? "",
+        name: (c.name ?? c.title ?? c.cameraName ?? "Camera") as string,
+        roadName: (c.roadName ?? null) as string | null,
+        intersection: (c.intersection ?? null) as string | null,
+        imageUrl: (c.imageUrl ?? c.url ?? c.src ?? "") as string,
         distanceKm: Number(c.distanceKm ?? 0),
-        externalId: c.externalId ?? c.external_id ?? null,
+        externalId: (c.externalId ?? c.external_id ?? null) as string | null,
         views: undefined,
-      })) as CameraForView[];
+      };
+      }) as CameraForView[];
       setCameras(enriched);
       setSelectedIndex(0);
       setImageKey((k) => k + 1);
@@ -148,67 +152,65 @@ export default function CameraView({ incident, onClose, tier }: Props) {
     ? imageUrlWithCacheBust(currentCamera.imageUrl)
     : "";
   const useIframe = currentCamera
-    ? useIframeForCamera(currentCamera.imageUrl)
+    ? embedCameraAsIframe(currentCamera.imageUrl)
     : false;
 
   if (!incident) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-zinc-950">
-      <header className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3 border-b border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate min-w-0">
+    <div className="fixed inset-0 z-50 flex flex-col bg-paper">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-ink/[0.08] px-3 py-2 sm:px-4 sm:py-3">
+        <h2 className="min-w-0 truncate font-display text-base font-bold text-ink sm:text-lg">
           Nearby camera
         </h2>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+          className="shrink-0 rounded-lg border border-ink/10 bg-ice/80 px-3 py-1.5 text-sm font-semibold text-ink transition hover:bg-ice"
         >
           Close
         </button>
       </header>
 
-      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden p-3 sm:p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-3 sm:p-4">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 border-2 border-amber-500/50 border-t-amber-500 rounded-full animate-spin" />
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                Finding nearby cameras…
-              </span>
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-sky/30 border-t-sky" />
+              <span className="text-sm text-muted">Finding nearby cameras…</span>
             </div>
           </div>
         ) : error ? (
-          <div className="flex-1 flex items-center justify-center text-center px-4">
-            <p className="text-zinc-600 dark:text-zinc-400">{error}</p>
+          <div className="flex flex-1 items-center justify-center px-4 text-center">
+            <p className="text-muted">{error}</p>
           </div>
         ) : cameras.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-lg text-zinc-700 dark:text-zinc-300">No nearby camera available</p>
-            <p className="text-sm text-zinc-600 dark:text-zinc-500 mt-1">
+          <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+            <p className="text-lg text-ink">No nearby camera available</p>
+            <p className="mt-1 text-sm text-muted">
               Try another incident or check back later.
             </p>
           </div>
         ) : (
           <>
-            <div className="shrink-0 flex flex-wrap items-center gap-2 mb-2">
+            <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2">
               {currentCamera && (
-                <div className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 min-w-0 flex-1">
-                  <span className="font-medium truncate block sm:inline">
+                <div className="min-w-0 flex-1 text-xs text-ink sm:text-sm">
+                  <span className="block truncate font-medium sm:inline">
                     {currentCamera.name}
                   </span>
-                  <span className="text-zinc-600 dark:text-zinc-500 sm:ml-2 block sm:inline text-xs">
+                  <span className="block text-xs text-muted sm:ml-2 sm:inline">
                     {currentCamera.distanceKm < 1
                       ? `${(currentCamera.distanceKm * 1000).toFixed(0)} m from incident`
                       : `${currentCamera.distanceKm.toFixed(1)} km from incident`}
                   </span>
                 </div>
               )}
-              <div className="flex gap-1.5 shrink-0">
+              <div className="flex shrink-0 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setImageKey((k) => k + 1)}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-200 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                  className="rounded-lg border border-ink/10 bg-ice/80 px-2 py-1.5 text-xs font-semibold text-ink transition hover:bg-ice"
                 >
                   Refresh
                 </button>
@@ -219,7 +221,7 @@ export default function CameraView({ incident, onClose, tier }: Props) {
                       setSelectedIndex(Number(e.target.value));
                       setImageKey((k) => k + 1);
                     }}
-                    className="rounded-lg bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-zinc-900 dark:text-zinc-200 text-xs max-w-[140px] sm:max-w-none"
+                    className="max-w-[140px] rounded-lg border border-ink/12 bg-ice/80 px-2 py-1.5 text-xs text-ink sm:max-w-none"
                   >
                     {cameras.map((c, i) => (
                       <option key={c.id} value={i}>
@@ -250,7 +252,7 @@ export default function CameraView({ incident, onClose, tier }: Props) {
                         setImageKey((k) => k + 1);
                       }
                     }}
-                    className="rounded-lg bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-2 py-1.5 text-zinc-900 dark:text-zinc-200 text-xs"
+                    className="rounded-lg border border-ink/12 bg-ice/80 px-2 py-1.5 text-xs text-ink"
                   >
                     {currentCamera.views.map((v, idx) => (
                       <option key={v.id ?? v.url} value={idx}>
@@ -261,21 +263,22 @@ export default function CameraView({ incident, onClose, tier }: Props) {
                 )}
               </div>
             </div>
-            <div className="shrink-0 w-full rounded-xl overflow-auto bg-zinc-900 border border-zinc-200 dark:border-zinc-800 min-h-[200px] max-h-[42vh] sm:max-h-[48vh] md:flex-1 md:min-h-[280px] md:max-h-none">
+            <div className="max-h-[42vh] min-h-[200px] w-full shrink-0 overflow-auto rounded-xl border border-ink/[0.1] bg-[#071a2e] sm:max-h-[48vh] md:max-h-none md:min-h-[280px] md:flex-1">
               {useIframe ? (
                 <iframe
                   key={imageKey}
                   src={imageSrc}
                   title={currentCamera?.name ?? "Traffic camera"}
-                  className="block w-[800px] h-[450px] sm:h-[500px] md:h-full md:min-h-[360px] border-0 bg-zinc-900"
+                  className="block h-[450px] w-[800px] border-0 bg-[#071a2e] sm:h-[500px] md:h-full md:min-h-[360px]"
                   sandbox="allow-scripts allow-same-origin"
                 />
               ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- external camera URLs, dynamic hosts
                 <img
                   key={imageKey}
                   src={imageSrc}
                   alt={currentCamera?.name ?? "Traffic camera"}
-                  className="block w-full h-full min-h-[200px] object-contain bg-zinc-900"
+                  className="block h-full min-h-[200px] w-full bg-[#071a2e] object-contain"
                 />
               )}
             </div>
@@ -294,13 +297,13 @@ export default function CameraView({ incident, onClose, tier }: Props) {
                     href={linkUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 mt-2 inline-block text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
+                    className="mt-2 inline-block shrink-0 text-xs font-semibold text-deep hover:text-sky"
                   >
                     View on Ontario 511 →
                   </a>
                 );
               })()}
-            <p className="shrink-0 mt-2 text-xs text-zinc-600 dark:text-zinc-500">
+            <p className="mt-2 shrink-0 font-mono-brand text-xs text-muted">
               Camera auto-refreshes every 15 seconds. Images may be delayed.
             </p>
           </>

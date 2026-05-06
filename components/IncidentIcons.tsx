@@ -21,16 +21,16 @@ type IconProps = {
 export function AccidentIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#EF4444" />
+      <circle cx="16" cy="16" r="16" fill="#F38A1F" />
       <path
         d="M12 10 L20 10 L22 16 L20 22 L12 22 L10 16 Z"
         fill="white"
         stroke="white"
         strokeWidth="1.5"
       />
-      <circle cx="13.5" cy="18" r="2" fill="#EF4444" />
-      <circle cx="18.5" cy="18" r="2" fill="#EF4444" />
-      <path d="M11 14 L21 14" stroke="#EF4444" strokeWidth="1.5" />
+      <circle cx="13.5" cy="18" r="2" fill="#F38A1F" />
+      <circle cx="18.5" cy="18" r="2" fill="#F38A1F" />
+      <path d="M11 14 L21 14" stroke="#F38A1F" strokeWidth="1.5" />
     </svg>
   );
 }
@@ -38,7 +38,7 @@ export function AccidentIcon({ size = 32, className = "" }: IconProps) {
 export function CollisionIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#10B981" />
+      <circle cx="16" cy="16" r="16" fill="#22B86C" />
       <path
         d="M10 16 L13 12 L16 14 L19 12 L22 16 L19 20 L16 18 L13 20 Z"
         fill="white"
@@ -46,7 +46,7 @@ export function CollisionIcon({ size = 32, className = "" }: IconProps) {
         strokeWidth="1.5"
         strokeLinejoin="round"
       />
-      <circle cx="16" cy="16" r="3" fill="#10B981" />
+      <circle cx="16" cy="16" r="3" fill="#22B86C" />
     </svg>
   );
 }
@@ -54,14 +54,14 @@ export function CollisionIcon({ size = 32, className = "" }: IconProps) {
 export function FireIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#DC2626" />
+      <circle cx="16" cy="16" r="16" fill="#E63946" />
       <path
         d="M16 8 C14 12, 12 14, 12 17 C12 20, 13.5 22, 16 22 C18.5 22, 20 20, 20 17 C20 14, 18 12, 16 8 Z"
         fill="white"
       />
       <path
         d="M16 12 C15 14, 14 15, 14 17 C14 18.5, 14.8 20, 16 20 C17.2 20, 18 18.5, 18 17 C18 15, 17 14, 16 12 Z"
-        fill="#DC2626"
+        fill="#E63946"
       />
     </svg>
   );
@@ -70,7 +70,7 @@ export function FireIcon({ size = 32, className = "" }: IconProps) {
 export function HazardIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#EAB308" />
+      <circle cx="16" cy="16" r="16" fill="#F4C430" />
       <path
         d="M16 6 L26 24 L6 24 Z"
         fill="white"
@@ -80,11 +80,11 @@ export function HazardIcon({ size = 32, className = "" }: IconProps) {
       />
       <path
         d="M16 12 L16 17"
-        stroke="#EAB308"
+        stroke="#F4C430"
         strokeWidth="2"
         strokeLinecap="round"
       />
-      <circle cx="16" cy="20" r="1" fill="#EAB308" />
+      <circle cx="16" cy="20" r="1" fill="#F4C430" />
     </svg>
   );
 }
@@ -92,7 +92,7 @@ export function HazardIcon({ size = 32, className = "" }: IconProps) {
 export function JamIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#8B5CF6" />
+      <circle cx="16" cy="16" r="16" fill="#8C4FCF" />
       <g fill="white">
         <rect x="8" y="10" width="5" height="8" rx="1" />
         <circle cx="9.5" cy="20" r="1.5" />
@@ -113,7 +113,7 @@ export function JamIcon({ size = 32, className = "" }: IconProps) {
 export function MedicalIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#EF4444" />
+      <circle cx="16" cy="16" r="16" fill="#E63946" />
       <path
         d="M16 9 L16 23 M9 16 L23 16"
         stroke="white"
@@ -127,7 +127,7 @@ export function MedicalIcon({ size = 32, className = "" }: IconProps) {
 export function PoliceIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#3B82F6" />
+      <circle cx="16" cy="16" r="16" fill="#3FA7E6" />
       <path
         d="M16 8 L12 11 L12 18 C12 21, 14 23, 16 24 C18 23, 20 21, 20 18 L20 11 Z"
         fill="white"
@@ -136,7 +136,7 @@ export function PoliceIcon({ size = 32, className = "" }: IconProps) {
       />
       <path
         d="M14 14 L15 17 L18 13"
-        stroke="#3B82F6"
+        stroke="#3FA7E6"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -149,7 +149,7 @@ export function PoliceIcon({ size = 32, className = "" }: IconProps) {
 export function WeatherIcon({ size = 32, className = "" }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className}>
-      <circle cx="16" cy="16" r="16" fill="#06B6D4" />
+      <circle cx="16" cy="16" r="16" fill="#28C6C8" />
       <ellipse cx="14" cy="13" rx="5" ry="3" fill="white" />
       <ellipse cx="18" cy="13" rx="5" ry="3.5" fill="white" />
       <path
@@ -254,14 +254,14 @@ export function getIconComponent(type: IncidentIconType) {
 // Get icon color by type
 export function getIconColor(type: IncidentIconType): string {
   switch (type) {
-    case "accident": return "#EF4444";
-    case "collision": return "#10B981";
-    case "fire": return "#DC2626";
-    case "hazard": return "#EAB308";
-    case "jam": return "#8B5CF6";
-    case "medical": return "#EF4444";
-    case "police": return "#3B82F6";
-    case "weather": return "#06B6D4";
+    case "accident": return "#F38A1F";
+    case "collision": return "#22B86C";
+    case "fire": return "#E63946";
+    case "hazard": return "#F4C430";
+    case "jam": return "#8C4FCF";
+    case "medical": return "#E63946";
+    case "police": return "#3FA7E6";
+    case "weather": return "#28C6C8";
     case "roadwork": return "#F97316";
     case "breakdown": return "#F59E0B";
     default: return "#6B7280";

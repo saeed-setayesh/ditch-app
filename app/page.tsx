@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore, type ComponentProps } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -19,9 +19,16 @@ import {
   Download,
   Share,
   Radio,
-  Phone,
   Mail,
 } from "lucide-react";
+
+const TICKER_ITEMS = [
+  "Collision • Hwy 401 East @ Brock Rd · 2 min ago",
+  "Multi-vehicle • DVP Northbound @ Eglinton · 4 min ago",
+  "Road hazard • Gardiner Expressway @ Spadina · 7 min ago",
+  "Collision • Hwy 400 @ King-Vaughan Rd · 11 min ago",
+  "Vehicle fire • Hwy 407 @ Weston Rd · 14 min ago",
+] as const;
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -94,39 +101,71 @@ const STEPS = [
   },
 ];
 
+function CtaPrimary({
+  children,
+  className = "",
+  ...props
+}: ComponentProps<typeof Link> & { className?: string }) {
+  return (
+    <Link
+      className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-[10px] bg-sky px-8 text-[15px] font-bold text-paper shadow-[0_4px_14px_rgba(63,167,230,0.35)] transition hover:bg-deep active:translate-y-px ${className}`}
+      {...props}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function CtaSecondary({
+  children,
+  className = "",
+  ...props
+}: ComponentProps<typeof Link> & { className?: string }) {
+  return (
+    <Link
+      className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-[10px] border border-ink/15 bg-paper/80 px-8 text-[15px] font-bold text-ink backdrop-blur transition hover:border-deep/40 hover:bg-ice ${className}`}
+      {...props}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function subscribeDisplayStandalone(onStoreChange: () => void) {
+  const mq = window.matchMedia("(display-mode: standalone)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function getDisplayStandaloneSnapshot() {
+  return window.matchMedia("(display-mode: standalone)").matches;
+}
+
 export default function LandingPage() {
   const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated" && !!session?.user;
 
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const isStandalone = useSyncExternalStore(
+    subscribeDisplayStandalone,
+    getDisplayStandaloneSnapshot,
+    () => false,
+  );
+  const [isIOS] = useState(
+    () =>
+      typeof navigator !== "undefined" &&
+      /iPad|iPhone|iPod/.test(navigator.userAgent),
+  );
   const [installed, setInstalled] = useState(false);
   const [ticker, setTicker] = useState(0);
 
-  const tickerItems = [
-    "Collision • Hwy 401 East @ Brock Rd · 2 min ago",
-    "Multi-vehicle · DVP Northbound @ Eglinton · 4 min ago",
-    "Road hazard · Gardiner Expressway @ Spadina · 7 min ago",
-    "Collision · Hwy 400 @ King-Vaughan Rd · 11 min ago",
-    "Vehicle fire · Hwy 407 @ Weston Rd · 14 min ago",
-  ];
-
   useEffect(() => {
-    const id = setInterval(() => setTicker((t) => (t + 1) % tickerItems.length), 3500);
+    const id = setInterval(
+      () => setTicker((t) => (t + 1) % TICKER_ITEMS.length),
+      3500,
+    );
     return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    setIsStandalone(
-      typeof window !== "undefined" &&
-        window.matchMedia("(display-mode: standalone)").matches,
-    );
-    setIsIOS(
-      typeof navigator !== "undefined" &&
-        /iPad|iPhone|iPod/.test(navigator.userAgent),
-    );
   }, []);
 
   useEffect(() => {
@@ -149,393 +188,151 @@ export default function LandingPage() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col overflow-hidden"
-      style={{
-        background: "#0A0A0B",
-        color: "#F0EDE8",
-        fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
-      }}
-    >
-      {/* ── Google Fonts ── */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=Bebas+Neue&display=swap');
-
-        * { box-sizing: border-box; }
-
-        .display-font { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.02em; }
-
-        .grid-bg {
-          background-image:
-            linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
-
-        .amber-glow {
-          background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(239,159,39,0.14) 0%, transparent 70%);
-        }
-
-        .red-glow-left {
-          background: radial-gradient(circle at 0% 60%, rgba(226,75,74,0.08) 0%, transparent 60%);
-        }
-
-        .feature-card {
-          border: 1px solid rgba(255,255,255,0.07);
-          background: rgba(255,255,255,0.03);
-          border-radius: 16px;
-          padding: 28px;
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-          transition: border-color 0.2s, background 0.2s;
-          cursor: default;
-        }
-
-        .feature-card:hover {
-          border-color: rgba(255,255,255,0.13);
-          background: rgba(255,255,255,0.05);
-        }
-
-        .cta-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          height: 52px;
-          padding: 0 32px;
-          border-radius: 10px;
-          font-weight: 700;
-          font-size: 15px;
-          text-decoration: none;
-          transition: all 0.18s;
-          letter-spacing: 0.01em;
-        }
-
-        .cta-primary {
-          background: #EF9F27;
-          color: #0A0A0B;
-        }
-        .cta-primary:hover {
-          background: #FAC775;
-          transform: translateY(-1px);
-        }
-
-        .cta-secondary {
-          background: transparent;
-          color: #F0EDE8;
-          border: 1px solid rgba(255,255,255,0.15);
-        }
-        .cta-secondary:hover {
-          border-color: rgba(255,255,255,0.3);
-          background: rgba(255,255,255,0.05);
-        }
-
-        .ticker-wrap {
-          overflow: hidden;
-          white-space: nowrap;
-        }
-
-        .step-number {
-          font-family: 'Bebas Neue', sans-serif;
-          font-size: 64px;
-          line-height: 1;
-          color: rgba(239,159,39,0.15);
-          position: absolute;
-          top: -12px;
-          left: 0;
-          pointer-events: none;
-          user-select: none;
-        }
-
-        .divider-line {
-          width: 1px;
-          background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent);
-          height: 60px;
-          margin: 0 auto;
-        }
-
-        .pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 5px 14px;
-          border-radius: 100px;
-          font-size: 12px;
-          font-weight: 500;
-          border: 1px solid rgba(239,159,39,0.25);
-          background: rgba(239,159,39,0.08);
-          color: #FAC775;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-        }
-
-        .live-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: #E24B4A;
-          position: relative;
-        }
-        .live-dot::after {
-          content: '';
-          position: absolute;
-          inset: -3px;
-          border-radius: 50%;
-          background: rgba(226,75,74,0.3);
-          animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0; transform: scale(2); }
-        }
-
-        .nav-logo-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #EF9F27, #D4537E);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .section-label {
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: #EF9F27;
-        }
-
-        .border-subtle {
-          border-color: rgba(255,255,255,0.07);
-        }
-
-        .ticker-incident {
-          animation: fadeSlide 0.4s ease;
-        }
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .morvarid-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 3px 10px 3px 4px;
-          border-radius: 100px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.07);
-          font-size: 11px;
-          color: rgba(240,237,232,0.4);
-        }
-      `}</style>
-
-      {/* ── Fixed background layers ── */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-        <div className="grid-bg" style={{ position: "absolute", inset: 0 }} />
-        <div className="amber-glow" style={{ position: "absolute", inset: 0 }} />
-        <div className="red-glow-left" style={{ position: "absolute", inset: 0 }} />
-      </div>
-
-      {/* ── Incident ticker ── */}
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-ice text-ink">
       <div
+        className="pointer-events-none fixed inset-0 z-0"
         style={{
-          position: "relative",
-          zIndex: 20,
-          background: "rgba(226,75,74,0.12)",
-          borderBottom: "1px solid rgba(226,75,74,0.2)",
-          padding: "8px 20px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
+          backgroundImage: `
+            radial-gradient(ellipse 80% 50% at 50% -20%, rgba(63, 167, 230, 0.12), transparent 60%),
+            radial-gradient(ellipse 50% 40% at 0% 50%, rgba(31, 111, 178, 0.06), transparent 55%)
+          `,
         }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <div className="live-dot" />
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#E24B4A", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+      />
+
+      <div className="relative z-20 flex items-center gap-3 border-b border-sky/25 bg-sky/10 px-5 py-2">
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className="relative size-2 rounded-full bg-sky"
+            style={{
+              boxShadow: "0 0 0 0 rgba(63,167,230,0.5)",
+              animation: "da-pulse 1.6s ease-out infinite",
+            }}
+          />
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-deep">
             Live
           </span>
         </div>
-        <div style={{ width: 1, height: 14, background: "rgba(226,75,74,0.3)" }} />
-        <span
-          key={ticker}
-          className="ticker-incident"
-          style={{ fontSize: 12, color: "rgba(240,237,232,0.6)", fontWeight: 400 }}
-        >
-          <span style={{ color: "#F0EDE8", fontWeight: 500 }}>Ontario: </span>
-          {tickerItems[ticker]}
+        <div className="h-3.5 w-px bg-deep/20" />
+        <span key={ticker} className="ticker-incident text-xs text-muted">
+          <span className="font-medium text-ink">Ontario: </span>
+          {TICKER_ITEMS[ticker]}
         </span>
       </div>
 
-      {/* ── Nav ── */}
-      <nav
-        style={{
-          position: "relative",
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 24px",
-          maxWidth: 1100,
-          margin: "0 auto",
-          width: "100%",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div className="nav-logo-icon">
-            <Truck size={18} color="white" strokeWidth={2.5} />
+      <nav className="relative z-20 mx-auto flex w-full max-w-[1100px] items-center justify-between px-6 py-5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-sky to-deep shadow-sm">
+            <Truck className="size-[18px] text-paper" strokeWidth={2.5} />
           </div>
           <div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: "0.06em", lineHeight: 1 }}>
+            <div className="font-display text-[22px] font-bold leading-none tracking-tight text-ink">
               DitchApp
             </div>
-            <div style={{ fontSize: 9, color: "rgba(240,237,232,0.35)", letterSpacing: "0.12em", textTransform: "uppercase", lineHeight: 1, marginTop: 2 }}>
+            <div className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
               by Morvarid Inc.
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2">
           {isLoggedIn ? (
-            <Link href="/dashboard" className="cta-btn cta-primary" style={{ height: 40, padding: "0 20px", fontSize: 14 }}>
-              Dashboard <ArrowRight size={14} />
+            <Link
+              href="/dashboard"
+              className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-sky px-5 text-sm font-bold text-paper shadow-md hover:bg-deep"
+            >
+              Dashboard <ArrowRight className="size-3.5" />
             </Link>
           ) : (
             <>
-              <Link href="/login" className="cta-btn cta-secondary" style={{ height: 40, padding: "0 16px", fontSize: 14, display: "none", }}>
-                Sign in
-              </Link>
-              <Link href="/register" className="cta-btn cta-primary" style={{ height: 40, padding: "0 20px", fontSize: 14 }}>
-                Get started <ArrowRight size={14} />
+              <Link
+                href="/register"
+                className="inline-flex h-10 items-center gap-1.5 rounded-[10px] bg-sky px-5 text-sm font-bold text-paper hover:bg-deep"
+              >
+                Get started <ArrowRight className="size-3.5" />
               </Link>
             </>
           )}
         </div>
       </nav>
 
-      {/* ── Hero ── */}
-      <section
-        style={{
-          position: "relative",
-          zIndex: 10,
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "60px 24px 80px",
-          width: "100%",
-        }}
-      >
-        <div style={{ maxWidth: 780 }}>
-          <div className="pill" style={{ marginBottom: 32 }}>
-            <Radio size={11} />
+      <section className="relative z-10 mx-auto w-full max-w-[1100px] px-6 pb-20 pt-14">
+        <div className="max-w-[780px]">
+          <div className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-sky/30 bg-paper/90 px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.04em] text-deep shadow-sm backdrop-blur">
+            <Radio className="size-3" />
             Real-time tracking across Ontario
           </div>
 
-          <h1
-            className="display-font"
-            style={{
-              fontSize: "clamp(72px, 13vw, 140px)",
-              lineHeight: 0.92,
-              marginBottom: 28,
-              color: "#F0EDE8",
-            }}
-          >
+          <h1 className="font-display text-[clamp(2.75rem,11vw,5.5rem)] font-bold leading-[0.95] tracking-tight text-ink">
             First on scene.
             <br />
-            <span style={{ color: "#EF9F27" }}>Every call.</span>
+            <span className="text-sky">Every call.</span>
           </h1>
 
-          <p
-            style={{
-              fontSize: 18,
-              lineHeight: 1.7,
-              color: "rgba(240,237,232,0.55)",
-              maxWidth: 520,
-              marginBottom: 40,
-              fontWeight: 300,
-            }}
-          >
+          <p className="mt-7 max-w-[520px] text-lg font-normal leading-relaxed text-muted">
             The real-time accident intelligence platform built for Ontario tow
             operators. Instant alerts, live camera feeds, tow score rankings —
             everything to get you there before the competition.
           </p>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 48 }}>
+          <div className="mt-10 flex flex-wrap gap-3">
             {isLoggedIn ? (
-              <Link href="/dashboard" className="cta-btn cta-primary">
-                Open dashboard <ArrowRight size={16} />
-              </Link>
+              <CtaPrimary href="/dashboard">
+                Open dashboard <ArrowRight className="size-4" />
+              </CtaPrimary>
             ) : (
               <>
-                <Link href="/register" className="cta-btn cta-primary">
-                  Start free today <ArrowRight size={16} />
-                </Link>
-                <Link href="/login" className="cta-btn cta-secondary">
-                  Sign in <ChevronRight size={16} />
-                </Link>
+                <CtaPrimary href="/register">
+                  Start free today <ArrowRight className="size-4" />
+                </CtaPrimary>
+                <CtaSecondary href="/login">
+                  Sign in <ChevronRight className="size-4" />
+                </CtaSecondary>
               </>
             )}
           </div>
 
-          {/* PWA install */}
           {!isStandalone && !installed && (deferredPrompt || isIOS) && (
-            <div style={{ marginBottom: 32 }}>
+            <div className="mt-8">
               {deferredPrompt ? (
                 <button
                   type="button"
                   onClick={handleInstall}
-                  className="cta-btn cta-secondary"
-                  style={{ fontSize: 13, height: 42 }}
+                  className="inline-flex h-[42px] items-center gap-2 rounded-[10px] border border-ink/15 bg-paper px-4 text-[13px] font-semibold text-ink hover:bg-ice"
                 >
-                  <Download size={14} /> Install app to home screen
+                  <Download className="size-3.5" /> Install app to home screen
                 </button>
               ) : isIOS ? (
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "rgba(240,237,232,0.4)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 10,
-                    padding: "10px 16px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "rgba(255,255,255,0.03)",
-                  }}
-                >
-                  <Share size={13} /> Tap <strong style={{ color: "#F0EDE8" }}>Share</strong> then{" "}
-                  <strong style={{ color: "#F0EDE8" }}>&quot;Add to Home Screen&quot;</strong>
+                <p className="inline-flex max-w-md items-center gap-2 rounded-[10px] border border-ink/10 bg-paper/90 px-4 py-2.5 text-xs text-muted backdrop-blur">
+                  <Share className="size-3.5 shrink-0 text-deep" /> Tap{" "}
+                  <strong className="text-ink">Share</strong> then{" "}
+                  <strong className="text-ink">&quot;Add to Home Screen&quot;</strong>
                 </p>
               ) : null}
             </div>
           )}
           {installed && (
-            <p style={{ fontSize: 13, color: "#1D9E75", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
-              <Shield size={14} /> App installed — open it from your home screen.
+            <p className="mt-6 flex items-center gap-2 text-[13px] font-medium text-deep">
+              <Shield className="size-3.5" /> App installed — open it from your
+              home screen.
             </p>
           )}
 
-          {/* Trust pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+          <div className="mt-10 flex flex-wrap items-center gap-5">
             {[
-              { icon: <Shield size={13} />, label: "Free forever" },
-              { icon: <Zap size={13} />, label: "Sub-second alerts" },
-              { icon: <Truck size={13} />, label: "Built for drivers" },
-              { icon: <MapPin size={13} />, label: "Ontario-wide coverage" },
+              { icon: <Shield className="size-3.5" />, label: "Free forever" },
+              { icon: <Zap className="size-3.5" />, label: "Sub-second alerts" },
+              {
+                icon: <Truck className="size-3.5" />,
+                label: "Built for drivers",
+              },
+              {
+                icon: <MapPin className="size-3.5" />,
+                label: "Ontario-wide coverage",
+              },
             ].map((t) => (
               <span
                 key={t.label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  color: "rgba(240,237,232,0.35)",
-                  fontWeight: 400,
-                }}
+                className="flex items-center gap-1.5 text-xs text-muted"
               >
                 {t.icon} {t.label}
               </span>
@@ -544,61 +341,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section
-        style={{
-          position: "relative",
-          zIndex: 10,
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "0 24px 100px",
-          width: "100%",
-        }}
-      >
-        <div style={{ marginBottom: 52, maxWidth: 480 }}>
-          <p className="section-label" style={{ marginBottom: 12 }}>Platform features</p>
-          <h2
-            className="display-font"
-            style={{ fontSize: 48, lineHeight: 1, color: "#F0EDE8", marginBottom: 12 }}
-          >
+      <section className="relative z-10 mx-auto w-full max-w-[1100px] px-6 pb-24">
+        <div className="mb-12 max-w-[480px]">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-deep">
+            Platform features
+          </p>
+          <h2 className="font-display text-5xl font-bold leading-none text-ink">
             One platform. Total edge.
           </h2>
-          <p style={{ fontSize: 15, color: "rgba(240,237,232,0.4)", lineHeight: 1.6, fontWeight: 300 }}>
+          <p className="mt-3 text-[15px] leading-relaxed text-muted">
             Everything a tow operator needs to work smarter and respond faster.
           </p>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.title} className="feature-card">
+              <div
+                key={f.title}
+                className="flex cursor-default flex-col gap-[18px] rounded-2xl border border-ink/[0.08] bg-paper/70 p-7 shadow-sm backdrop-blur transition hover:border-sky/25 hover:shadow-md"
+              >
                 <div
+                  className="flex size-11 shrink-0 items-center justify-center rounded-xl border"
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: `${f.color}18`,
-                    border: `1px solid ${f.color}30`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
+                    backgroundColor: `${f.color}14`,
+                    borderColor: `${f.color}30`,
                   }}
                 >
-                  <Icon size={20} color={f.color} strokeWidth={1.8} />
+                  <Icon
+                    size={20}
+                    color={f.color}
+                    strokeWidth={1.8}
+                  />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", marginBottom: 8, letterSpacing: "-0.01em" }}>
+                  <h3 className="mb-2 text-[15px] font-bold tracking-tight text-ink">
                     {f.title}
                   </h3>
-                  <p style={{ fontSize: 13, color: "rgba(240,237,232,0.45)", lineHeight: 1.65, fontWeight: 300 }}>
+                  <p className="text-[13px] leading-relaxed text-muted">
                     {f.desc}
                   </p>
                 </div>
@@ -608,60 +389,32 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── How it works ── */}
-      <section
-        style={{
-          position: "relative",
-          zIndex: 10,
-          background: "rgba(255,255,255,0.02)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            padding: "80px 24px",
-            width: "100%",
-          }}
-        >
-          <div style={{ marginBottom: 60, textAlign: "center" }}>
-            <p className="section-label" style={{ marginBottom: 12 }}>How it works</p>
-            <h2 className="display-font" style={{ fontSize: 48, lineHeight: 1, color: "#F0EDE8" }}>
+      <section className="relative z-10 border-y border-ink/[0.08] bg-paper/50">
+        <div className="mx-auto w-full max-w-[1100px] px-6 py-20">
+          <div className="mb-16 text-center">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-deep">
+              How it works
+            </p>
+            <h2 className="font-display text-5xl font-bold text-ink">
               Up and running in 60 seconds.
             </h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 40 }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-10">
             {STEPS.map((s) => {
               const Icon = s.icon;
               return (
-                <div key={s.step} style={{ position: "relative", paddingTop: 16 }}>
-                  <span className="step-number">{s.step}</span>
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 14,
-                      background: "rgba(239,159,39,0.1)",
-                      border: "1px solid rgba(239,159,39,0.2)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginBottom: 20,
-                      position: "relative",
-                      zIndex: 1,
-                    }}
-                  >
-                    <Icon size={22} color="#EF9F27" strokeWidth={1.8} />
+                <div key={s.step} className="relative pt-4">
+                  <span className="pointer-events-none absolute -top-1 left-0 select-none font-display text-[64px] font-bold leading-none text-sky/20">
+                    {s.step}
+                  </span>
+                  <div className="relative z-[1] mb-5 flex size-[52px] items-center justify-center rounded-[14px] border border-sky/25 bg-sky/10">
+                    <Icon className="size-[22px] text-deep" strokeWidth={1.8} />
                   </div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: "#F0EDE8", marginBottom: 10, letterSpacing: "-0.01em" }}>
+                  <h3 className="mb-2.5 text-lg font-bold tracking-tight text-ink">
                     {s.title}
                   </h3>
-                  <p style={{ fontSize: 14, color: "rgba(240,237,232,0.45)", lineHeight: 1.65, fontWeight: 300 }}>
-                    {s.desc}
-                  </p>
+                  <p className="text-sm leading-relaxed text-muted">{s.desc}</p>
                 </div>
               );
             })}
@@ -669,168 +422,89 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Bottom CTA ── */}
-      <section
-        style={{
-          position: "relative",
-          zIndex: 10,
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "100px 24px",
-          width: "100%",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <h2
-            className="display-font"
-            style={{ fontSize: "clamp(52px, 8vw, 80px)", lineHeight: 0.95, color: "#F0EDE8", marginBottom: 20 }}
-          >
+      <section className="relative z-10 mx-auto w-full max-w-[1100px] px-6 py-24 text-center">
+        <div className="mx-auto max-w-[560px]">
+          <h2 className="font-display text-[clamp(3rem,8vw,5rem)] font-bold leading-[0.95] text-ink">
             Never miss
             <br />
-            <span style={{ color: "#EF9F27" }}>a call again.</span>
+            <span className="text-sky">a call again.</span>
           </h2>
-          <p
-            style={{
-              fontSize: 16,
-              color: "rgba(240,237,232,0.45)",
-              marginBottom: 36,
-              lineHeight: 1.65,
-              fontWeight: 300,
-            }}
-          >
-            Join tow operators across Ontario who rely on DitchApp every shift to
-            find incidents faster and work smarter.
+          <p className="mt-5 text-base leading-relaxed text-muted">
+            Join tow operators across Ontario who rely on DitchApp every shift
+            to find incidents faster and work smarter.
           </p>
           {isLoggedIn ? (
-            <Link href="/dashboard" className="cta-btn cta-primary">
-              Open dashboard <ArrowRight size={16} />
-            </Link>
+            <div className="mt-9 flex justify-center">
+              <CtaPrimary href="/dashboard">
+                Open dashboard <ArrowRight className="size-4" />
+              </CtaPrimary>
+            </div>
           ) : (
-            <Link href="/register" className="cta-btn cta-primary">
-              Create free account <ArrowRight size={16} />
-            </Link>
+            <div className="mt-9 flex justify-center">
+              <CtaPrimary href="/register">
+                Create free account <ArrowRight className="size-4" />
+              </CtaPrimary>
+            </div>
           )}
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer
-        style={{
-          position: "relative",
-          zIndex: 10,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          padding: "40px 24px",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "0 auto",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 32,
-          }}
-        >
-          {/* Brand */}
+      <footer className="relative z-10 border-t border-ink/[0.08] px-6 py-10">
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-start justify-between gap-8">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div className="nav-logo-icon">
-                <Truck size={16} color="white" strokeWidth={2.5} />
+            <div className="mb-2.5 flex items-center gap-2.5">
+              <div className="flex size-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-sky to-deep">
+                <Truck className="size-4 text-paper" strokeWidth={2.5} />
               </div>
-              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.06em" }}>
+              <span className="font-display text-xl font-bold tracking-tight text-ink">
                 DitchApp
               </span>
             </div>
-            <p style={{ fontSize: 12, color: "rgba(240,237,232,0.3)", lineHeight: 1.6, maxWidth: 240 }}>
+            <p className="max-w-[240px] text-xs leading-relaxed text-muted">
               Real-time accident intelligence for Ontario tow operators. Built to
               keep you first on scene, every time.
             </p>
-            <div style={{ marginTop: 16 }}>
-              <div className="morvarid-badge">
-                <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    background: "linear-gradient(135deg, #EF9F27, #D4537E)",
-                    flexShrink: 0,
-                  }}
-                />
-                Owned &amp; operated by Morvarid Inc.
-              </div>
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-paper/80 py-1 pl-1 pr-3 text-[11px] text-muted">
+              <div className="size-4 shrink-0 rounded bg-gradient-to-br from-sky to-deep" />
+              Owned &amp; operated by Morvarid Inc.
             </div>
           </div>
 
-          {/* Contact */}
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,232,0.3)", marginBottom: 14 }}>
+            <p className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
               Contact
             </p>
             <a
               href="mailto:Info@ditchapp.net"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 13,
-                color: "rgba(240,237,232,0.5)",
-                textDecoration: "none",
-                marginBottom: 8,
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#EF9F27")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(240,237,232,0.5)")}
+              className="flex items-center gap-2 text-[13px] text-muted transition hover:text-deep"
             >
-              <Mail size={13} /> Info@ditchapp.net
+              <Mail className="size-3.5" /> Info@ditchapp.net
             </a>
           </div>
 
-          {/* Legal links */}
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,232,0.3)", marginBottom: 14 }}>
+            <p className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
               Legal
             </p>
-            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <a
-                key={item}
-                href="#"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  color: "rgba(240,237,232,0.35)",
-                  textDecoration: "none",
-                  marginBottom: 8,
-                  transition: "color 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#F0EDE8")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(240,237,232,0.35)")}
-              >
-                {item}
-              </a>
-            ))}
+            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map(
+              (item) => (
+                <a
+                  key={item}
+                  href="#"
+                  className="mb-2 block text-[13px] text-muted/80 transition hover:text-ink"
+                >
+                  {item}
+                </a>
+              ),
+            )}
           </div>
         </div>
 
-        <div
-          style={{
-            maxWidth: 1100,
-            margin: "32px auto 0",
-            paddingTop: 20,
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-          }}
-        >
-          <p style={{ fontSize: 11, color: "rgba(240,237,232,0.2)" }}>
+        <div className="mx-auto mt-8 flex max-w-[1100px] flex-wrap items-center justify-between gap-2.5 border-t border-ink/[0.06] pt-5">
+          <p className="text-[11px] text-muted/70">
             © {new Date().getFullYear()} Morvarid Inc. All rights reserved.
           </p>
-          <p style={{ fontSize: 11, color: "rgba(240,237,232,0.2)" }}>
+          <p className="text-[11px] text-muted/70">
             PWA · Ontario, Canada · Built for tow operators
           </p>
         </div>

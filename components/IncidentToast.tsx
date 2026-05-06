@@ -50,24 +50,20 @@ export default function IncidentToast({
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg"
+      className="flex items-start gap-3 rounded-xl border border-ink/10 bg-paper p-4 shadow-lg"
       style={{ animation: "toastSlideIn 0.3s ease-out" }}
     >
-      <div className="shrink-0 w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky/15">
         <span className="text-lg">🚨</span>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">
-          New {label}
-        </p>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 line-clamp-2">
-          {desc}
-        </p>
+        <p className="text-sm font-semibold text-ink">New {label}</p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted">{desc}</p>
       </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 p-1 rounded-lg text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        className="shrink-0 rounded-lg p-1 text-muted transition hover:bg-ice hover:text-ink"
         aria-label="Dismiss"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
