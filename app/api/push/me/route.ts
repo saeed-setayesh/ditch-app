@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
+import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const deviceId = request.nextUrl.searchParams.get("deviceId");
 
-  // Try session first
   let userId: string | null = null;
   try {
     const session = await auth();
     userId = session?.user?.id ?? null;
-  } catch {}
+  } catch {
+    // no session
+  }
 
   try {
     let sub = null;
 
-    // Prefer userId lookup
     if (userId) {
       sub = await prisma.pushSubscription.findFirst({
         where: { userId },
@@ -25,25 +26,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fallback to deviceId
     if (!sub && deviceId) {
       sub = await prisma.pushSubscription.findFirst({
         where: { deviceId },
-        select: { tier: true, radiusKm: true, incidentSources: true },
+        select: {
+          tier: true,
+          radiusKm: true,
+          incidentSources: true,
+          userId: true,
+        },
       });
+      if (!userId && sub?.userId) userId = sub.userId;
     }
 
-    // Also check user's tier from User model
-    let userTier = "free";
-    if (userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { tier: true },
-      });
-      if (user) userTier = user.tier;
-    }
-
-    const tier = userTier === "pro" ? "pro" : (sub?.tier ?? "free");
+    let tier: "free" | "pro" = "free";
+    if (userId) tier = await resolveEffectiveTier(userId);
 
     return NextResponse.json({
       tier,

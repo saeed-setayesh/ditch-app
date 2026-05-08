@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
 import { CITIES } from "@/lib/cities";
 
 const INCIDENT_TYPE_OPTIONS: { value: number; label: string }[] = [
@@ -23,6 +24,17 @@ function getOrCreateDeviceId(): string {
   return id;
 }
 
+type BillingStatus = {
+  authenticated: boolean;
+  tier: string;
+  stripeCustomer?: boolean;
+  portalUser?: boolean;
+  organization?: {
+    id: string;
+    portalOrganization?: boolean;
+  } | null;
+};
+
 type Props = {
   onClose?: () => void;
   initialRadius?: number;
@@ -34,11 +46,7 @@ type Props = {
   initialTier?: "free" | "pro";
   initialMinTowScore?: number | null;
   initialIncidentSources?: string[];
-  onSaved?: (prefs: {
-    cityId?: string;
-    tier?: string;
-    incidentSources?: string[];
-  }) => void;
+  onSaved?: (prefs: { cityId?: string; incidentSources?: string[] }) => void;
 };
 
 const MAX_RADIUS_FREE = 5;
@@ -65,11 +73,11 @@ export default function AlertPreferences({
   const [quietStart, setQuietStart] = useState(initialQuietStart ?? "22:00");
   const [quietEnd, setQuietEnd] = useState(initialQuietEnd ?? "06:00");
   const [cityId, setCityId] = useState(initialCityId);
-  const [tier, setTier] = useState<"free" | "pro">(initialTier);
   const [minTowScore, setMinTowScore] = useState<number | "">(
     initialMinTowScore ?? "",
   );
   const [saving, setSaving] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const DEFAULT_SOURCES = ["tomtom", "511on"];
   const [incidentSources, setIncidentSources] = useState<string[]>(
@@ -77,8 +85,22 @@ export default function AlertPreferences({
       new Set([...(initialIncidentSources ?? []), ...DEFAULT_SOURCES]),
     ),
   );
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+
   useEffect(() => {
-    // when modal opens or initial props change, show both by default (merge saved prefs with defaults)
+    let c = true;
+    fetch("/api/billing/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (c && d) setBilling(d as BillingStatus);
+      })
+      .catch(() => {});
+    return () => {
+      c = false;
+    };
+  }, []);
+
+  useEffect(() => {
     setIncidentSources(
       Array.from(
         new Set([...(initialIncidentSources ?? []), ...DEFAULT_SOURCES]),
@@ -86,8 +108,59 @@ export default function AlertPreferences({
     );
   }, [initialIncidentSources]);
 
-  const maxRadius = tier === "pro" ? MAX_RADIUS_PRO : MAX_RADIUS_FREE;
+  const planTier: "free" | "pro" =
+    billing == null
+      ? initialTier
+      : billing.tier === "pro"
+        ? "pro"
+        : "free";
+
+  const maxRadius = planTier === "pro" ? MAX_RADIUS_PRO : MAX_RADIUS_FREE;
   const cappedRadius = Math.min(radiusKm, maxRadius);
+
+  const startProCheckout = async () => {
+    setBillingBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "pro" }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setMessage(data.error ?? "Could not start checkout.");
+    } catch {
+      setMessage("Could not start checkout.");
+    } finally {
+      setBillingBusy(false);
+    }
+  };
+
+  const openUserPortal = async () => {
+    setBillingBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "user" }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setMessage(data.error ?? "Billing portal unavailable.");
+    } catch {
+      setMessage("Billing portal unavailable.");
+    } finally {
+      setBillingBusy(false);
+    }
+  };
 
   const save = useCallback(async () => {
     setSaving(true);
@@ -105,10 +178,9 @@ export default function AlertPreferences({
           quietHoursStart: quietStart || null,
           quietHoursEnd: quietEnd || null,
           cityId: cityId || null,
-          tier: tier === "pro" ? "pro" : "free",
           minTowScore:
-            tier === "pro" && minTowScore !== "" ? minTowScore : null,
-          incidentSources: incidentSources,
+            planTier === "pro" && minTowScore !== "" ? minTowScore : null,
+          incidentSources,
         }),
       });
       if (!res.ok) {
@@ -116,7 +188,7 @@ export default function AlertPreferences({
         throw new Error(data.error ?? "Failed to save");
       }
       setMessage("Preferences saved.");
-      onSaved?.({ cityId, tier, incidentSources });
+      onSaved?.({ cityId, incidentSources });
       onClose?.();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Failed to save");
@@ -131,8 +203,9 @@ export default function AlertPreferences({
     quietStart,
     quietEnd,
     cityId,
-    tier,
+    planTier,
     minTowScore,
+    incidentSources,
     onSaved,
     onClose,
   ]);
@@ -142,6 +215,8 @@ export default function AlertPreferences({
       prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   };
+
+  const fleetEnabled = billing?.authenticated && billing.organization?.id;
 
   return (
     <div className="space-y-4 p-4">
@@ -164,21 +239,63 @@ export default function AlertPreferences({
         </select>
       </div>
 
-      <div>
-        <label className="mb-1 block text-sm text-muted">
-          Plan (for testing)
-        </label>
-        <select
-          value={tier}
-          onChange={(e) => setTier(e.target.value as "free" | "pro")}
-          className="w-full rounded-lg border border-ink/15 bg-paper px-3 py-2 text-ink"
-        >
-          <option value="free">Free (max 5 km radius)</option>
-          <option value="pro">Pro (heatmaps, score filter, max 20 km)</option>
-        </select>
-        <p className="mt-1 text-xs text-muted">
-          Changing to Pro instantly unlocks all features (payment integration coming soon)
+      <div className="rounded-xl border border-ink/10 bg-ice/40 p-3">
+        <p className="text-sm font-semibold text-ink">
+          Plan ·{" "}
+          {planTier === "pro"
+            ? "Pro"
+            : "Free"}
         </p>
+        <p className="mt-1 text-xs text-muted">
+          Pro includes heatmaps, larger alert radius (up to {MAX_RADIUS_PRO}{" "}
+          km), and tow-score filters — unlocked via Stripe.
+        </p>
+        {!billing?.authenticated ? (
+          <p className="mt-2 text-xs text-muted">
+            Sign in to manage an individual subscription. Fleet seats live under{" "}
+            <Link href="/company" className="font-medium text-sky underline">
+              Fleet billing
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {planTier !== "pro" && (
+              <button
+                type="button"
+                disabled={billingBusy}
+                onClick={() => void startProCheckout()}
+                className="rounded-lg bg-sky px-3 py-1.5 text-sm font-semibold text-paper transition hover:bg-deep disabled:opacity-50"
+              >
+                Upgrade to Pro
+              </button>
+            )}
+            {billing.portalUser ? (
+              <button
+                type="button"
+                disabled={billingBusy}
+                onClick={() => void openUserPortal()}
+                className="rounded-lg border border-ink/15 bg-paper px-3 py-1.5 text-sm font-semibold text-ink transition hover:bg-ice disabled:opacity-50"
+              >
+                Manage billing
+              </button>
+            ) : (
+              planTier === "pro" && (
+                <span className="text-xs text-muted">
+                  Stripe customer portal appears after Checkout completes once.
+                </span>
+              )
+            )}
+          </div>
+        )}
+        {fleetEnabled ? (
+          <p className="mt-2 text-xs text-muted">
+            Organization billing:{" "}
+            <Link href="/company" className="font-medium text-sky underline">
+              open fleet page
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -233,13 +350,14 @@ export default function AlertPreferences({
           </label>
         </div>
         <p className="mt-1 text-xs text-muted">
-          Select sources to combine for live incident data. INRIX needs INRIX_APP_ID and INRIX_APP_KEY in .env.
+          Select sources to combine for live incident data. INRIX needs
+          INRIX_APP_ID and INRIX_APP_KEY in .env.
         </p>
       </div>
 
       <div>
         <label className="mb-1 block text-sm text-muted">
-          Alert radius (km) — max {maxRadius} for {tier}
+          Alert radius (km) — max {maxRadius} on {planTier}
         </label>
         <input
           type="number"
@@ -299,7 +417,7 @@ export default function AlertPreferences({
         </select>
       </div>
 
-      {tier === "pro" && (
+      {planTier === "pro" && (
         <div>
           <label className="mb-1 block text-sm text-muted">
             Min tow score (Pro) — only alert if incident score ≥

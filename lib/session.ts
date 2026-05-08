@@ -1,30 +1,33 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
 
 /**
- * Get the current session user ID and tier from Auth.js JWT.
- * Falls back to deviceId-based lookup for backward compatibility.
+ * Get the current session user ID and effective paid tier.
+ * Falls back to deviceId-linked user when present; otherwise free.
  */
 export async function getSessionUserIdAndTier(
-  deviceId?: string | null
+  deviceId?: string | null,
 ): Promise<{ userId: string | null; tier: string }> {
   try {
     const session = await auth();
     if (session?.user?.id) {
-      const tier = (session.user as any).tier ?? "free";
+      const tier = await resolveEffectiveTier(session.user.id);
       return { userId: session.user.id, tier };
     }
   } catch {
     // ignore – caller may be API route without session
   }
 
-  // Fallback: lookup via deviceId
   if (deviceId) {
     const sub = await prisma.pushSubscription.findFirst({
       where: { deviceId },
-      select: { tier: true, userId: true },
+      select: { userId: true },
     });
-    return { userId: sub?.userId ?? null, tier: sub?.tier ?? "free" };
+    if (sub?.userId) {
+      const tier = await resolveEffectiveTier(sub.userId);
+      return { userId: sub.userId, tier };
+    }
   }
 
   return { userId: null, tier: "free" };

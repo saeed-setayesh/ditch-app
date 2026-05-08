@@ -17,12 +17,20 @@ model User {
   image         String?
   password      String?   // hashed via bcryptjs – null for OAuth users
   tier          String    @default("free")
+  /// B2C Stripe customer (Checkout / Customer Portal)
+  stripeCustomerId         String? @unique
+  stripeSubscriptionId     String? @unique
+  stripeSubscriptionStatus String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   accounts      Account[]
   sessions      Session[]
   pushSubscriptions PushSubscription[]
+  organizationMember OrganizationMember?
+  driverPresence DriverPresence?
+  crowdPosts       CrowdPost[]
+  rewardLedger     RewardLedgerEntry[]
 
   @@map("users")
 }
@@ -141,4 +149,101 @@ model TrafficCamera {
   @@index([city])
   @@index([lat, lng])
   @@map("traffic_cameras")
+}
+
+// ─── Billing / organizations (B2B seats) ─────────────────────────────
+
+model Organization {
+  id               String    @id @default(cuid())
+  name             String
+  stripeCustomerId String?   @unique
+  billingEmail     String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  members      OrganizationMember[]
+  subscription OrganizationSubscription?
+  serviceArea    OrganizationServiceArea?
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String   @unique
+  role           String   @default("driver") // "admin" | "driver"
+  seatActive     Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_members")
+}
+
+model OrganizationSubscription {
+  id                   String    @id @default(cuid())
+  organizationId       String    @unique
+  stripeSubscriptionId String    @unique
+  status               String    @default("incomplete")
+  seatQuantity         Int       @default(1)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_subscriptions")
+}
+
+// ─── Social / fleet presence (polling-based “realtime” MVP) ───────────
+
+model DriverPresence {
+  userId    String   @id
+  lat       Float
+  lng       Float
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("driver_presence")
+}
+
+model CrowdPost {
+  id              String   @id @default(cuid())
+  userId          String
+  body            String   @db.VarChar(4000)
+  moderationState String @default("visible")
+  suspiciousScore Float    @default(0)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("crowd_posts")
+}
+
+model RewardLedgerEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("reward_ledger_entries")
+}
+
+model OrganizationServiceArea {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  geoJson        Json
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_service_areas")
 }

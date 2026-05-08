@@ -148,6 +148,8 @@ export default function IncidentDetailModal({
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [humanPlaceLine, setHumanPlaceLine] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -175,6 +177,21 @@ export default function IncidentDetailModal({
       cancelled = true;
     };
   }, [incident]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const [lng, lat] = incident.coordinates;
+    setHumanPlaceLine(null);
+    void fetch(`/api/geo/reverse?lat=${lat}&lng=${lng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { line?: string | null } | null) => {
+        if (!cancelled && d?.line) setHumanPlaceLine(d.line);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [incident.id, incident.coordinates[0], incident.coordinates[1]]);
 
   /* extract fields from detail response */
   const inc = (detail?.incident ?? {}) as Record<string, unknown>;
@@ -294,7 +311,10 @@ export default function IncidentDetailModal({
               )}
 
               {/* Location */}
-              <Row label="Location">
+              {humanPlaceLine && (
+                <Row label="Nearby">{humanPlaceLine}</Row>
+              )}
+              <Row label="Coords">
                 <span className="font-mono-brand text-xs text-deep">
                   {incident.coordinates[1].toFixed(5)}, {incident.coordinates[0].toFixed(5)}
                 </span>

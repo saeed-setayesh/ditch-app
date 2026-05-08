@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   "/login",
   "/register",
   "/api/auth",        // Auth.js endpoints
+  "/api/stripe/webhook",
 ];
 
 const PUBLIC_PREFIXES = [

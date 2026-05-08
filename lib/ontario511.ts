@@ -40,11 +40,11 @@ export type CameraInput = {
   city?: string;
 };
 
-/** DitchApp area (approximate) for filtering Ontario 511 cameras. */
-const DitchApp_LAT_MIN = 43.58;
-const DitchApp_LAT_MAX = 43.85;
-const DitchApp_LNG_MIN = -79.65;
-const DitchApp_LNG_MAX = -79.1;
+/** DitchApp / GTA preset coverage — wider core-Toronto box for public 511 cameras. */
+const DitchApp_LAT_MIN = 43.5;
+const DitchApp_LAT_MAX = 43.95;
+const DitchApp_LNG_MIN = -79.85;
+const DitchApp_LNG_MAX = -79.05;
 
 function inDitchAppBox(lat: number, lng: number): boolean {
   return (

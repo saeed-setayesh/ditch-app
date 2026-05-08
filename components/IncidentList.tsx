@@ -5,6 +5,7 @@ import { haversineKm } from "@/lib/geo";
 import { getIconType, getIconComponent } from "./IncidentIcons";
 import { Camera, Info, Clock, Navigation, MapPin } from "lucide-react";
 import { getRelativeTime } from "@/lib/time";
+import { describeEtaShot } from "@/lib/shotLevel";
 
 export type IncidentForList = {
   id: string;
@@ -83,6 +84,8 @@ function IncidentCard({
       : incident.towLabel === "Medium"
         ? "bg-sky/15 text-deep"
         : "bg-ink/10 text-muted";
+
+  const shot = describeEtaShot(incident.etaMinutes, incident.confidence);
 
   // Update relative time every minute
   useEffect(() => {
@@ -181,7 +184,7 @@ function IncidentCard({
                 {[incident.from, incident.to].filter(Boolean).join(" → ")}
               </p>
             )}
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+            <div className="mt-1 flex flex-wrap items-start justify-between gap-2 text-xs text-muted">
               <div className="flex flex-wrap items-center gap-2">
                 {distanceKm != null && (
                   <span className="font-mono-brand font-medium text-deep">
@@ -197,11 +200,16 @@ function IncidentCard({
                   </span>
                 )}
               </div>
-              {incident.etaMinutes != null && incident.etaMinutes >= 0 && (
-                <span className="font-mono-brand font-semibold text-ink">
-                  ~{incident.etaMinutes} min
+              {shot != null && incident.etaMinutes != null && incident.etaMinutes >= 0 ? (
+                <span className="flex max-w-[11rem] flex-col items-end text-right leading-tight">
+                  <span className="font-mono-brand font-semibold text-ink">
+                    ~{incident.etaMinutes} min
+                  </span>
+                  <span className={`text-[10px] font-medium ${shot.toneClass}`}>
+                    {shot.line}
+                  </span>
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

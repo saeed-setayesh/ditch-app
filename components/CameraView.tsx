@@ -199,6 +199,12 @@ export default function CameraView({ incident, onClose, tier }: Props) {
                   <span className="block truncate font-medium sm:inline">
                     {currentCamera.name}
                   </span>
+                  {currentCamera.externalId != null &&
+                    String(currentCamera.externalId).startsWith("511on") && (
+                      <span className="mb-1 inline-block rounded-md bg-sky/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-deep sm:mb-0 sm:ml-2">
+                        Public · Ontario 511
+                      </span>
+                    )}
                   <span className="block text-xs text-muted sm:ml-2 sm:inline">
                     {currentCamera.distanceKm < 1
                       ? `${(currentCamera.distanceKm * 1000).toFixed(0)} m from incident`

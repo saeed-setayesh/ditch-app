@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -39,22 +40,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        // fetch tier from DB
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id as string },
-          select: { tier: true },
-        });
-        token.tier = dbUser?.tier ?? "free";
+    async jwt({ token, user, trigger }) {
+      if (user) token.id = user.id;
+      const uid = (token.id ?? token.sub) as string | undefined;
+      if (uid && (!!user || trigger === "update")) {
+        token.tier = await resolveEffectiveTier(uid);
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        (session.user as any).tier = token.tier as string;
+        session.user.tier = (token.tier as string) ?? "free";
       }
       return session;
     },

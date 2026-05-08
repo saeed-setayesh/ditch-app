@@ -39,10 +39,21 @@ export async function GET(request: NextRequest) {
       const { incidents } = await fetchIncidentDetails(city.bbox);
       const normalized = normalizeIncidents(incidents);
       const hour = toDate.getHours();
+      const liveDay = toDate.getDay();
       const byHour: { hour: number; count: number }[] = Array.from({ length: 24 }, (_, h) => ({
         hour: h,
         count: h === hour ? normalized.length : 0,
       }));
+      const dowLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const byDayOfWeek = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+        day,
+        label: dowLabels[day],
+        count: day === liveDay ? normalized.length : 0,
+      }));
+      const peakDays = [...byDayOfWeek]
+        .sort((a, b) => b.count - a.count)
+        .filter((x) => x.count > 0)
+        .slice(0, 5);
       const gridPrecision = 3;
       const hotAreas: Record<string, number> = {};
       for (const inc of normalized) {
@@ -65,7 +76,9 @@ export async function GET(request: NextRequest) {
         to: toDate.toISOString(),
         totalIncidents: normalized.length,
         byHour,
+        byDayOfWeek,
         peakHours: [{ hour, count: normalized.length }],
+        peakDays,
         hotAreas: hotAreasList,
       });
     } catch (e) {
@@ -93,15 +106,26 @@ export async function GET(request: NextRequest) {
 
     const byHour: Record<number, number> = {};
     for (let h = 0; h < 24; h++) byHour[h] = 0;
+    const byDayOfWeekCounts: Record<number, number> = {};
+    for (let d = 0; d < 7; d++) byDayOfWeekCounts[d] = 0;
     const gridPrecision = 3;
     const hotAreas: Record<string, number> = {};
 
     for (const s of snapshots) {
       const hour = new Date(s.fetchedAt).getHours();
       byHour[hour] = (byHour[hour] ?? 0) + 1;
+      const dow = new Date(s.fetchedAt).getDay();
+      byDayOfWeekCounts[dow] = (byDayOfWeekCounts[dow] ?? 0) + 1;
       const cell = `${s.lat.toFixed(gridPrecision)},${s.lng.toFixed(gridPrecision)}`;
       hotAreas[cell] = (hotAreas[cell] ?? 0) + 1;
     }
+
+    const dowLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const byDayOfWeek = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day,
+      label: dowLabels[day],
+      count: byDayOfWeekCounts[day] ?? 0,
+    }));
 
     const peakHours = Object.entries(byHour)
       .map(([hour, count]) => ({ hour: parseInt(hour, 10), count }))
@@ -116,6 +140,10 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
 
+    const peakDays = [...byDayOfWeek]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return NextResponse.json({
       city: cityName,
       period,
@@ -124,7 +152,9 @@ export async function GET(request: NextRequest) {
       to: toDate.toISOString(),
       totalIncidents: snapshots.length,
       byHour: Object.entries(byHour).map(([hour, count]) => ({ hour: parseInt(hour, 10), count })),
+      byDayOfWeek,
       peakHours,
+      peakDays,
       hotAreas: hotAreasList,
     });
   } catch (e) {

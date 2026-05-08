@@ -17,6 +17,8 @@ import { CITIES } from "@/lib/cities";
 import { haversineKm } from "@/lib/geo";
 import { openNavigation, openWazeNavigation } from "@/lib/navigation";
 import IncidentToast, { type ToastIncident } from "@/components/IncidentToast";
+import DriverShortcutsBar from "@/components/DriverShortcutsBar";
+import PresenceBeacon from "@/components/PresenceBeacon";
 import { User, Sliders, Map as MapIcon, List } from "lucide-react";
 
 const INCIDENTS_POLL_MS = 90_000;
@@ -130,14 +132,16 @@ export default function Home() {
     return () => clearInterval(t);
   }, [fetchIncidents, cityId]);
 
-  useEffect(() => {
+  const refreshTierAndSources = useCallback(() => {
     const deviceId = getOrCreateDeviceId();
     if (!deviceId) return;
     fetch(`/api/push/me?deviceId=${encodeURIComponent(deviceId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { tier?: string; incidentSources?: string } | null) => {
-        if (data?.tier === "pro") setTier("pro");
-        else setTier("free");
+        if (data?.tier === "pro") {
+          setTier("pro");
+          setHeatmapBlocked(false);
+        } else setTier("free");
         if (data?.incidentSources) {
           const arr = String(data.incidentSources)
             .split(",")
@@ -153,6 +157,19 @@ export default function Home() {
         setUserIncidentSources(["tomtom", "511on"]);
       });
   }, []);
+
+  useEffect(() => {
+    refreshTierAndSources();
+  }, [session?.user?.id, refreshTierAndSources]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("checkout") === "success") {
+      refreshTierAndSources();
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, [refreshTierAndSources]);
 
   const sendLocationToServer = useCallback(async (lat: number, lng: number) => {
     try {
@@ -292,6 +309,7 @@ export default function Home() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-paper text-ink">
+      <PresenceBeacon />
       {/* Desktop header — ditchappmobile spacing: 10–12px padding, 40px controls */}
       <header className="hidden shrink-0 items-center justify-between gap-3 border-b border-ink/[0.08] bg-paper px-3 py-2.5 md:flex">
         <div className="flex items-center gap-2.5">
@@ -364,6 +382,18 @@ export default function Home() {
           >
             Insights
           </a>
+          <a
+            href="/social"
+            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
+          >
+            Crowd
+          </a>
+          <a
+            href="/company"
+            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
+          >
+            Fleet
+          </a>
           <button
             type="button"
             onClick={() => setPrefsOpen(true)}
@@ -386,6 +416,10 @@ export default function Home() {
           </button>
         </div>
       </header>
+
+      <div className="hidden shrink-0 border-b border-ink/[0.06] bg-ice/25 px-3 py-1.5 md:block">
+        <DriverShortcutsBar cityId={cityId} />
+      </div>
 
       {/* Mobile header */}
       <header className="flex shrink-0 items-center gap-2.5 border-b border-ink/[0.08] bg-paper/95 px-3 py-2.5 backdrop-blur-md md:hidden">
@@ -433,6 +467,10 @@ export default function Home() {
         </button>
       </header>
 
+      <div className="shrink-0 border-b border-ink/[0.06] bg-ice/25 px-3 py-1.5 md:hidden">
+        <DriverShortcutsBar cityId={cityId} />
+      </div>
+
       {prefsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-ink/10 bg-paper shadow-xl">
@@ -443,15 +481,20 @@ export default function Home() {
               onClose={() => setPrefsOpen(false)}
               onSaved={(prefs) => {
                 if (prefs.cityId) setCityId(prefs.cityId);
-                if (prefs.tier === "pro" || prefs.tier === "free") {
-                  setTier(prefs.tier);
-                  // Clear heatmap blocked message when upgrading to pro
-                  if (prefs.tier === "pro") {
-                    setHeatmapBlocked(false);
-                  }
-                }
                 if (prefs.incidentSources)
                   setUserIncidentSources(prefs.incidentSources);
+                const deviceId = getOrCreateDeviceId();
+                fetch(
+                  `/api/push/me?deviceId=${encodeURIComponent(deviceId)}`,
+                )
+                  .then((r) => (r.ok ? r.json() : null))
+                  .then((data: { tier?: string } | null) => {
+                    if (data?.tier === "pro") {
+                      setTier("pro");
+                      setHeatmapBlocked(false);
+                    } else setTier("free");
+                  })
+                  .catch(() => {});
               }}
             />
           </div>
@@ -687,6 +730,18 @@ export default function Home() {
               className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
             >
               Insights
+            </a>
+            <a
+              href="/social"
+              className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
+            >
+              Crowd & spots
+            </a>
+            <a
+              href="/company"
+              className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
+            >
+              Fleet billing
             </a>
             <button
               type="button"

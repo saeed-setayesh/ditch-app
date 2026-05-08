@@ -43,7 +43,9 @@ type Patterns = {
   period: string;
   totalIncidents: number;
   byHour: { hour: number; count: number }[];
+  byDayOfWeek: { day: number; label: string; count: number }[];
   peakHours: { hour: number; count: number }[];
+  peakDays: { day: number; label: string; count: number }[];
   hotAreas: { lat: number; lng: number; count: number }[];
 };
 
@@ -144,6 +146,10 @@ export default function InsightsPage() {
 
   const maxDayCount = byDay.length ? Math.max(...byDay.map((d) => d.count), 1) : 1;
 
+  const maxWeekdayCount = patterns?.byDayOfWeek?.length
+    ? Math.max(...patterns.byDayOfWeek.map((d) => d.count), 1)
+    : 1;
+
   return (
     <div className="flex min-h-screen flex-col bg-ice text-ink">
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-ink/[0.08] bg-paper px-3 py-2 sm:px-4 sm:py-3">
@@ -157,7 +163,9 @@ export default function InsightsPage() {
           </Link>
           <div className="min-w-0">
             <h1 className="truncate font-display text-lg font-bold tracking-tight sm:text-xl">Insights</h1>
-            <p className="mt-0.5 hidden text-xs text-muted sm:block sm:text-sm">Past incidents, peak hours, hot areas</p>
+            <p className="mt-0.5 hidden text-xs text-muted sm:block sm:text-sm">
+              Past incidents, peak hours, weekdays, hot areas
+            </p>
           </div>
         </div>
         {userName && (
@@ -176,7 +184,10 @@ export default function InsightsPage() {
         {upgradeRequired && dataSource === "platform" && (
           <div className="rounded-xl border border-sky/30 bg-sky/10 p-4 text-sm text-ink">
             <p className="font-semibold text-deep">Platform history & insights are Pro features.</p>
-            <p className="mt-1 text-muted">Use TomTom live above to see current incidents without Pro, or upgrade to Pro to view saved history, peak hours, and hot areas.</p>
+            <p className="mt-1 text-muted">
+              Use TomTom live above to see current incidents without Pro, or upgrade to Pro to view saved history, peak
+              hours, weekday patterns, and hot areas.
+            </p>
             <Link href="/dashboard" className="mt-2 inline-block font-semibold text-deep hover:text-sky">← Back to dashboard</Link>
           </div>
         )}
@@ -286,6 +297,56 @@ export default function InsightsPage() {
               {dataSource === "platform"
                 ? "No platform data for this range yet. Switch to TomTom live to see current incidents, or run the cron to collect data over time."
                 : "No live incidents in this area right now."}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-muted">
+            Weekdays {dataSource === "live" ? "(current snapshot)" : "(last 7 days)"}
+          </h2>
+          {loadingPatterns ? (
+            <div className="h-24 animate-pulse rounded-xl bg-ice" />
+          ) : patterns && patterns.byDayOfWeek.some((d) => d.count > 0) ? (
+            <>
+              <p className="mb-3 text-xs text-muted">
+                Counts reflect when snapshots were captured — useful for spotting heavier days once you have platform
+                history. Live mode attributes all incidents to today&apos;s weekday.
+              </p>
+              <div className="space-y-2 rounded-xl border border-ink/[0.08] bg-paper p-4 shadow-sm">
+                {patterns.byDayOfWeek.map(({ day, label, count }) => (
+                  <div key={`dow-${day}`} className="flex items-center gap-3">
+                    <span className="w-14 text-sm font-medium text-muted">{label}</span>
+                    <div className="h-6 flex-1 overflow-hidden rounded bg-ice">
+                      <div
+                        className="h-full min-w-[2px] rounded bg-deep/55 transition-all"
+                        style={{
+                          width: `${(count / maxWeekdayCount) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="w-10 text-sm font-mono-brand font-semibold text-deep">{count}</span>
+                  </div>
+                ))}
+              </div>
+              {patterns.peakDays?.some((p) => p.count > 0) && (
+                <div className="mt-3 flex flex-wrap gap-2 rounded-xl border border-ink/[0.08] bg-paper p-4 shadow-sm">
+                  <span className="w-full text-xs font-semibold text-muted">Top days</span>
+                  {patterns.peakDays
+                    .filter((p) => p.count > 0)
+                    .map(({ label, count }) => (
+                      <span key={label} className="rounded-lg bg-ice px-3 py-1.5 text-sm text-ink">
+                        {label}: {count}
+                      </span>
+                    ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="rounded-xl border border-ink/[0.08] bg-paper p-4 text-sm text-muted shadow-sm">
+              {dataSource === "platform"
+                ? "No weekday pattern data yet. Collect snapshots over time or switch to TomTom live."
+                : "No live incidents — weekday buckets are empty for this snapshot."}
             </div>
           )}
         </section>

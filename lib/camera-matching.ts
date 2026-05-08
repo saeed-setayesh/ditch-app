@@ -2,8 +2,8 @@ import { haversineKm } from "@/lib/geo";
 import { getCamerasByCity } from "@/lib/cameras";
 
 const RADIUS_KM_INITIAL = 0.5; // 500 m
-const RADIUS_KM_EXPANDED = 3; // 3 km (highways; Ontario 511 cameras can be spaced)
-const MAX_CAMERAS = 3;
+const RADIUS_KM_EXPANDED = 5; // Highways; 511 cameras can be sparse along corridors
+const MAX_CAMERAS = 6;
 
 const MAJOR_ROAD_KEYWORDS = [
   "highway",
