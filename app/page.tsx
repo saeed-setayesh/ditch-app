@@ -21,6 +21,7 @@ import {
   Radio,
   Mail,
 } from "lucide-react";
+import AppLogoMark from "@/components/brand/AppLogoMark";
 
 const TICKER_ITEMS = [
   "Collision • Hwy 401 East @ Brock Rd · 2 min ago",
@@ -221,8 +222,8 @@ export default function LandingPage() {
 
       <nav className="relative z-20 mx-auto flex w-full max-w-[1100px] items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-sky to-deep shadow-sm">
-            <Truck className="size-[18px] text-paper" strokeWidth={2.5} />
+          <div className="flex size-9 shrink-0 overflow-hidden rounded-[11px] shadow-sm ring-1 ring-deep/10">
+            <AppLogoMark size={36} className="size-9" />
           </div>
           <div>
             <div className="font-display text-[22px] font-bold leading-none tracking-tight text-ink">
@@ -453,8 +454,8 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-[1100px] flex-wrap items-start justify-between gap-8">
           <div>
             <div className="mb-2.5 flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-[10px] bg-gradient-to-br from-sky to-deep">
-                <Truck className="size-4 text-paper" strokeWidth={2.5} />
+              <div className="flex size-9 overflow-hidden rounded-[11px] shadow-sm ring-1 ring-deep/10">
+                <AppLogoMark size={36} className="size-9" />
               </div>
               <span className="font-display text-xl font-bold tracking-tight text-ink">
                 DitchApp
@@ -465,7 +466,7 @@ export default function LandingPage() {
               keep you first on scene, every time.
             </p>
             <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-paper/80 py-1 pl-1 pr-3 text-[11px] text-muted">
-              <div className="size-4 shrink-0 rounded bg-gradient-to-br from-sky to-deep" />
+              <AppLogoMark size={16} className="size-4 shrink-0 overflow-hidden rounded-[3px]" />
               Owned &amp; operated by Morvarid Inc.
             </div>
           </div>

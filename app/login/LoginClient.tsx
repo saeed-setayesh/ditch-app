@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AppLogoMark from "@/components/brand/AppLogoMark";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -53,8 +54,8 @@ export default function LoginClient() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-ice px-4 py-8 safe-area-inset">
       <div className="flex w-full max-w-sm flex-col gap-6">
         <div className="text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-sky/30 bg-paper shadow-sm">
-            <span className="text-3xl">🚨</span>
+          <div className="mb-4 inline-flex h-16 w-16 overflow-hidden rounded-2xl border border-sky/30 bg-paper shadow-sm">
+            <AppLogoMark size={64} className="h-full w-full" />
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
             DitchApp Accident Alert

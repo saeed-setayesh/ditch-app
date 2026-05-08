@@ -24,6 +24,15 @@ export const metadata: Metadata = {
   title: "DitchApp Accident Alert",
   description:
     "Live traffic incidents for tow drivers in DitchApp. Get notified when accidents happen near you.",
+  icons: {
+    icon: [
+      { url: "/brand/live-ping-mark.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/brand/live-ping-mark.svg",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -53,9 +62,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
-      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}
       >

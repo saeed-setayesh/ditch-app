@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ditchapp — Logo Exploration</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0B1B2B;
+    --ink-2:#1B2D40;
+    --paper:#F4F8FC;
+    --paper-2:#E9F2FB;
+    --line:#D7E3EE;
+    --blue:#3FA7E6;        /* primary light blue */
+    --blue-deep:#1F6FB2;   /* deeper accent */
+    --blue-pale:#CFE6F7;
+    --blue-ice:#E8F4FC;
+    --white:#FFFFFF;
+  }
+  html,body{margin:0;padding:0;background:#EEF3F8;color:var(--ink);font-family:"Inter",system-ui,sans-serif;}
+  .swatch-row{display:flex;gap:10px;align-items:center;font-family:"JetBrains Mono",monospace;font-size:11px;color:#6b7c8d}
+  .swatch{width:18px;height:18px;border-radius:4px;border:1px solid rgba(0,0,0,.06)}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="logos.jsx"></script>
+<script type="text/babel">
+  const { useState } = React;
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App/>);
+</script>
+</body>
+</html>
