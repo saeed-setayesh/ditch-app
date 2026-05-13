@@ -198,7 +198,7 @@ export default function Map({
       el.style.justifyContent = "center";
       el.style.cursor = "pointer";
       el.style.pointerEvents = "auto";
-      el.setAttribute("data-incident-id", inc.id);
+      el.setAttribute("data-tt-marker-incident-id", inc.id);
 
       el.innerHTML = buildIncidentPinHtml(
         inc.iconCategory,
@@ -213,14 +213,6 @@ export default function Map({
 
       el.addEventListener("click", () => {
         onIncidentSelectRef.current?.(inc.id);
-        setTimeout(() => {
-          const listItem = document.querySelector(
-            `[data-incident-id="${inc.id}"]`,
-          );
-          if (listItem) {
-            listItem.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }, 100);
       });
       markersRef.current.push(marker);
     }

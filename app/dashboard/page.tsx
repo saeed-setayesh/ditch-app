@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import Map from "@/components/Map";
 import IncidentList, { type IncidentForList } from "@/components/IncidentList";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -18,8 +18,19 @@ import { haversineKm } from "@/lib/geo";
 import { openNavigation, openWazeNavigation } from "@/lib/navigation";
 import IncidentToast, { type ToastIncident } from "@/components/IncidentToast";
 import DriverShortcutsBar from "@/components/DriverShortcutsBar";
+import DriverAccountSheet from "@/components/DriverAccountSheet";
 import PresenceBeacon from "@/components/PresenceBeacon";
-import { User, Sliders, Map as MapIcon, List } from "lucide-react";
+import {
+  type DriverShortcut,
+  readDriverQuickNavsFromLocalStorage,
+  writeDriverQuickNavsToLocalStorage,
+} from "@/lib/driverShortcuts";
+import {
+  DEFAULT_DRIVER_MAP_FILTERS,
+  readDriverMapFiltersFromLocalStorage,
+  writeDriverMapFiltersToLocalStorage,
+} from "@/lib/driverMapFilters";
+import { User, Sliders, Map as MapIcon, List, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 
 const INCIDENTS_POLL_MS = 90_000;
 const LOCATION_UPDATE_MS = 120_000;
@@ -37,6 +48,7 @@ function getOrCreateDeviceId(): string {
 export default function Home() {
   const { data: session } = useSession();
   const userName = session?.user?.name ?? null;
+  const userEmail = session?.user?.email ?? null;
   const [incidents, setIncidents] = useState<IncidentForList[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +58,8 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [quickNavs, setQuickNavs] = useState<DriverShortcut[]>([]);
   const [etaMap, setEtaMap] = useState<Record<string, number>>({});
   const [heatmapOn, setHeatmapOn] = useState(false);
   const [heatmapPeriod, setHeatmapPeriod] = useState<"day" | "week" | "month">(
@@ -67,24 +81,49 @@ export default function Home() {
     "511on",
   ]);
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    incidentTypes: [
-      "accident",
-      "collision",
-      "fire",
-      "hazard",
-      "jam",
-      "medical",
-      "police",
-      "weather",
-    ],
-    radiusKm: 50, // Show all by default (max radius)
-    showTrafficFlow: true, // Show traffic flow by default
+  const [filters, setFilters] = useState<FilterState>(() => {
+    if (typeof window === "undefined") return DEFAULT_DRIVER_MAP_FILTERS;
+    return (
+      readDriverMapFiltersFromLocalStorage() ?? DEFAULT_DRIVER_MAP_FILTERS
+    );
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMainView, setMobileMainView] = useState<"map" | "list">("map");
+  const [incidentsPanelOpen, setIncidentsPanelOpen] = useState(true);
   const [toasts, setToasts] = useState<ToastIncident[]>([]);
   const prevIncidentIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    setQuickNavs(readDriverQuickNavsFromLocalStorage());
+  }, []);
+
+  const persistQuickNavs = useCallback(async (navs: DriverShortcut[]) => {
+    setQuickNavs(navs);
+    writeDriverQuickNavsToLocalStorage(navs);
+    const deviceId = getOrCreateDeviceId();
+    if (!deviceId) return;
+    try {
+      await fetch("/api/push/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, driverQuickNavs: navs }),
+      });
+    } catch {
+      // ignore — localStorage still has data
+    }
+  }, []);
+
+  const persistMapFilters = useCallback((next: FilterState) => {
+    setFilters(next);
+    writeDriverMapFiltersToLocalStorage(next);
+    const deviceId = getOrCreateDeviceId();
+    if (!deviceId) return;
+    void fetch("/api/push/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId, driverMapFilters: next }),
+    }).catch(() => {});
+  }, []);
 
   const fetchIncidents = useCallback(
     async (cid?: string) => {
@@ -137,21 +176,38 @@ export default function Home() {
     if (!deviceId) return;
     fetch(`/api/push/me?deviceId=${encodeURIComponent(deviceId)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { tier?: string; incidentSources?: string } | null) => {
-        if (data?.tier === "pro") {
-          setTier("pro");
-          setHeatmapBlocked(false);
-        } else setTier("free");
-        if (data?.incidentSources) {
-          const arr = String(data.incidentSources)
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-          if (arr.length > 0) setUserIncidentSources(arr);
-        } else {
-          setUserIncidentSources(["tomtom", "511on"]);
-        }
-      })
+      .then(
+        (
+          data: {
+            tier?: string;
+            incidentSources?: string;
+            driverQuickNavs?: DriverShortcut[];
+            driverMapFilters?: FilterState | null;
+          } | null,
+        ) => {
+          if (data?.tier === "pro") {
+            setTier("pro");
+            setHeatmapBlocked(false);
+          } else setTier("free");
+          if (data?.incidentSources) {
+            const arr = String(data.incidentSources)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (arr.length > 0) setUserIncidentSources(arr);
+          } else {
+            setUserIncidentSources(["tomtom", "511on"]);
+          }
+          if (Array.isArray(data?.driverQuickNavs)) {
+            setQuickNavs(data.driverQuickNavs);
+            writeDriverQuickNavsToLocalStorage(data.driverQuickNavs);
+          }
+          if (data?.driverMapFilters != null) {
+            setFilters(data.driverMapFilters);
+            writeDriverMapFiltersToLocalStorage(data.driverMapFilters);
+          }
+        },
+      )
       .catch(() => {
         setTier("free");
         setUserIncidentSources(["tomtom", "511on"]);
@@ -308,168 +364,315 @@ export default function Home() {
   }));
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-paper text-ink">
+    <div className="relative h-dvh overflow-hidden text-ink">
+      {/* Full-viewport map (Google Maps–style base layer) */}
+      <div className="absolute inset-0 z-0">
+        <Map
+          incidents={incidentsWithEta}
+          userLocation={userLocation}
+          selectedId={selectedId}
+          onIncidentSelect={(id) => {
+            setSelectedId(id);
+            setIncidentsPanelOpen(true);
+            if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+              setMobileMainView("list");
+            }
+          }}
+          heatmapOn={heatmapOn}
+          heatmapPeriod={heatmapPeriod}
+          heatmapCityId={cityId}
+          heatmapDeviceId={getOrCreateDeviceId() || null}
+          heatmapSource={heatmapSource}
+          onHeatmapBlocked={() => {
+            setHeatmapOn(false);
+            setHeatmapBlocked(true);
+          }}
+          showTrafficFlow={filters.showTrafficFlow}
+        />
+      </div>
+
       <PresenceBeacon />
-      {/* Desktop header — ditchappmobile spacing: 10–12px padding, 40px controls */}
-      <header className="hidden shrink-0 items-center justify-between gap-3 border-b border-ink/[0.08] bg-paper px-3 py-2.5 md:flex">
-        <div className="flex items-center gap-2.5">
+
+      {/* Floating top chrome — white controls for contrast on the map */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex flex-col gap-2 px-2 pb-2 pt-[max(0.35rem,env(safe-area-inset-top))] sm:px-3">
+        <header className="pointer-events-auto hidden items-center justify-between gap-3 px-1 py-1.5 md:flex">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setAccountOpen(true)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+              title="Account"
+              aria-label="Open account"
+            >
+              <User className="size-[22px]" strokeWidth={2} />
+            </button>
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-ink/12 bg-white px-3.5 py-2 font-bold uppercase tracking-wide text-ink shadow-sm"
+              style={{ fontSize: 13, letterSpacing: "0.06em" }}
+            >
+              <span
+                className="size-2 shrink-0 rounded-full bg-emerald-500"
+                style={{ animation: "da-pulse 1.6s ease-out infinite" }}
+              />
+              Online
+            </div>
+            {userName && (
+              <span className="hidden max-w-[10rem] truncate rounded-lg border border-ink/12 bg-white px-2 py-1.5 text-sm text-ink shadow-sm lg:inline">
+                {userName}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <select
+              id="city-select"
+              aria-label="City"
+              value={cityId}
+              onChange={async (e) => {
+                const id = e.target.value;
+                setCityId(id);
+                try {
+                  const deviceId = getOrCreateDeviceId();
+                  await fetch("/api/push/preferences", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ deviceId, cityId: id }),
+                  });
+                } catch {
+                  // ignore
+                }
+              }}
+              className="rounded-lg border border-ink/12 bg-white px-2 py-1.5 text-sm text-ink shadow-sm focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/25"
+            >
+              {CITIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setFilterPanelOpen(true)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+              title="Filters"
+              aria-label="Open filters"
+            >
+              <Sliders className="size-5" strokeWidth={2} />
+            </button>
+          </div>
+        </header>
+
+        <header className="pointer-events-auto flex items-center gap-2.5 px-1 py-1.5 md:hidden">
           <button
             type="button"
-            onClick={() => setPrefsOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/[0.12] bg-paper text-muted shadow-sm transition hover:border-sky/40 hover:text-ink"
-            title="Account"
-            aria-label="Open preferences"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+            aria-label="Open menu"
           >
-            <User className="size-[22px]" strokeWidth={2} />
+            <Menu className="size-[22px]" strokeWidth={2} />
           </button>
-          <div
-            className="inline-flex items-center gap-2 rounded-full bg-sky px-3.5 py-2 font-bold uppercase tracking-wide text-paper shadow-[0_2px_8px_rgba(63,167,230,0.3)]"
-            style={{ fontSize: 13, letterSpacing: "0.06em" }}
-          >
-            <span
-              className="size-2 rounded-full bg-paper"
-              style={{
-                animation: "da-pulse 1.6s ease-out infinite",
-              }}
-            />
-            Online
+          <div className="flex flex-1 justify-center">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-ink/12 bg-white px-3.5 py-2 font-bold uppercase tracking-wide text-ink shadow-sm"
+              style={{ fontSize: 13, letterSpacing: "0.06em" }}
+            >
+              <span
+                className="size-2 shrink-0 rounded-full bg-emerald-500"
+                style={{ animation: "da-pulse 1.6s ease-out infinite" }}
+              />
+              Online
+            </div>
           </div>
-          {userName && (
-            <span className="hidden text-sm text-muted lg:inline">
-              {userName}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <select
-            id="city-select"
-            aria-label="City"
-            value={cityId}
-            onChange={async (e) => {
-              const id = e.target.value;
-              setCityId(id);
-              try {
-                const deviceId = getOrCreateDeviceId();
-                await fetch("/api/push/preferences", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ deviceId, cityId: id }),
-                });
-              } catch {
-                // ignore
-              }
-            }}
-            className="rounded-lg border border-ink/15 bg-ice/80 px-2 py-1.5 text-sm text-ink focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/25"
-          >
-            {CITIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             onClick={() => setFilterPanelOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-paper shadow-md transition hover:bg-deep"
-            title="Filters"
-            aria-label="Open filters"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+            aria-label="Filters"
           >
             <Sliders className="size-5" strokeWidth={2} />
           </button>
-          <a
-            href="/insights"
-            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
-          >
-            Insights
-          </a>
-          <a
-            href="/social"
-            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
-          >
-            Crowd
-          </a>
-          <a
-            href="/company"
-            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
-          >
-            Fleet
-          </a>
           <button
             type="button"
-            onClick={() => setPrefsOpen(true)}
-            className="shrink-0 rounded-lg border border-ink/12 bg-ice/60 px-3 py-2 text-sm font-semibold text-ink transition hover:bg-ice"
+            onClick={() =>
+              setMobileMainView((v) => (v === "map" ? "list" : "map"))
+            }
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+            aria-label={mobileMainView === "map" ? "Show list" : "Show map"}
           >
-            Prefs
+            {mobileMainView === "map" ? (
+              <List className="size-5" strokeWidth={2} />
+            ) : (
+              <MapIcon className="size-5" strokeWidth={2} />
+            )}
           </button>
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="shrink-0 rounded-lg p-2 text-muted transition hover:bg-ice hover:text-ink"
-            title="Sign out"
-            aria-label="Sign out"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <div className="hidden shrink-0 border-b border-ink/[0.06] bg-ice/25 px-3 py-1.5 md:block">
-        <DriverShortcutsBar cityId={cityId} />
+        </header>
       </div>
 
-      {/* Mobile header */}
-      <header className="flex shrink-0 items-center gap-2.5 border-b border-ink/[0.08] bg-paper/95 px-3 py-2.5 backdrop-blur-md md:hidden">
+      {/* Heatmap controls + Quick nav — aligned below top bar */}
+      <div className="pointer-events-auto absolute right-3 top-[calc(env(safe-area-inset-top)+3.85rem)] z-[35] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 md:top-[calc(env(safe-area-inset-top)+3.75rem)]">
+        <div className="hidden max-w-[calc(100vw-28rem)] flex-wrap justify-end gap-2 md:flex">
+          <button
+            type="button"
+            onClick={() => {
+              if (tier === "free" && !heatmapOn) {
+                setHeatmapOn(true);
+                setHeatmapBlocked(false);
+              } else {
+                setHeatmapOn((v) => !v);
+                setHeatmapBlocked(false);
+              }
+            }}
+            className={`rounded-xl border px-3 py-2 text-xs font-semibold text-ink shadow-sm transition-colors ${
+              heatmapOn
+                ? "border-sky/40 bg-ice"
+                : "border-ink/12 bg-white hover:bg-ice"
+            }`}
+          >
+            Heatmap {heatmapOn ? "On" : "Off"}
+          </button>
+          {heatmapOn && (
+            <>
+              <select
+                value={heatmapSource}
+                onChange={(e) =>
+                  setHeatmapSource(e.target.value as "platform" | "live")
+                }
+                className="rounded-xl border border-ink/12 bg-white px-2 py-2 text-xs text-ink shadow-sm"
+                title="Platform = our saved data; Live = TomTom right now"
+              >
+                <option value="platform">Platform data</option>
+                <option value="live">TomTom live</option>
+              </select>
+              {heatmapSource === "platform" && (
+                <select
+                  value={heatmapPeriod}
+                  onChange={(e) =>
+                    setHeatmapPeriod(
+                      e.target.value as "day" | "week" | "month",
+                    )
+                  }
+                  className="rounded-xl border border-ink/12 bg-white px-2 py-2 text-xs text-ink shadow-sm"
+                >
+                  <option value="day">Last 24h</option>
+                  <option value="week">Last 7 days</option>
+                  <option value="month">Last 30 days</option>
+                </select>
+              )}
+            </>
+          )}
+        </div>
+        <DriverShortcutsBar shortcuts={quickNavs} layout="list" />
+      </div>
+
+      {/* Desktop: floating incident list (collapsible) */}
+      {incidentsPanelOpen ? (
+        <aside className="pointer-events-auto absolute bottom-4 left-3 top-[calc(env(safe-area-inset-top)+3.85rem)] z-30 hidden w-[min(420px,calc(100vw-1.5rem))] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white/78 shadow-[0_8px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl backdrop-saturate-125 md:flex md:top-[calc(env(safe-area-inset-top)+3.75rem)]">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-ink/[0.08] bg-white/65 px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3">
+            <h2 className="font-display text-sm font-bold text-ink">
+              Incidents
+            </h2>
+            <button
+              type="button"
+              onClick={() => setIncidentsPanelOpen(false)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ink/12 bg-white text-ink shadow-sm transition-colors hover:bg-ice"
+              aria-label="Hide incidents list"
+              title="Hide list"
+            >
+              <ChevronLeft className="size-5" strokeWidth={2} />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <IncidentList
+              incidents={incidentsWithEta}
+              userLocation={userLocation}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onViewCamera={setCameraViewIncident}
+              onShowDetails={setDetailIncident}
+              onNavigate={(incident) => {
+                const [lng, lat] = incident.coordinates;
+                openNavigation(lat, lng, incident.description);
+              }}
+              onNavigateWaze={(incident) => {
+                const [lng, lat] = incident.coordinates;
+                openWazeNavigation(lat, lng, incident.description);
+              }}
+              tier={tier}
+              loading={loading}
+            />
+          </div>
+        </aside>
+      ) : (
         <button
           type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/[0.12] bg-paper text-muted shadow-sm"
-          aria-label="Open menu"
+          onClick={() => setIncidentsPanelOpen(true)}
+          className="pointer-events-auto absolute left-3 top-[calc(env(safe-area-inset-top)+3.85rem)] z-30 hidden h-11 items-center gap-2 rounded-r-xl border border-ink/15 bg-white pl-2.5 pr-3.5 text-sm font-semibold text-ink shadow-md transition-colors hover:bg-ice md:flex md:top-[calc(env(safe-area-inset-top)+3.75rem)]"
+          aria-label="Show incidents list"
         >
-          <User className="size-[22px]" strokeWidth={2} />
+          <ChevronRight className="size-4 shrink-0" strokeWidth={2} />
+          <List className="size-4 shrink-0" strokeWidth={2} />
+          <span>Incidents</span>
         </button>
-        <div className="flex flex-1 justify-center">
-          <div
-            className="inline-flex items-center gap-2 rounded-full bg-sky px-3.5 py-2 font-bold uppercase tracking-wide text-paper shadow-[0_2px_8px_rgba(63,167,230,0.3)]"
-            style={{ fontSize: 13, letterSpacing: "0.06em" }}
-          >
-            <span
-              className="size-2 rounded-full bg-paper"
-              style={{ animation: "da-pulse 1.6s ease-out infinite" }}
-            />
-            Online
+      )}
+
+      {/* Mobile: incident list as bottom sheet over map */}
+      {mobileMainView === "list" ? (
+        <div className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 max-h-[min(75vh,640px)] md:hidden">
+          <div className="flex max-h-[min(75vh,640px)] flex-col rounded-t-3xl border border-ink/10 bg-white/78 shadow-[0_-8px_40px_rgba(0,0,0,0.14)] backdrop-blur-xl backdrop-saturate-125">
+            <div className="flex shrink-0 items-center justify-between border-b border-ink/10 px-3 pb-2 pt-2">
+              <h2 className="pl-1 font-display text-sm font-bold text-ink">
+                Incidents
+              </h2>
+              <button
+                type="button"
+                onClick={() => setMobileMainView("map")}
+                className="flex h-9 items-center justify-center rounded-lg px-3 text-sm font-semibold text-ink"
+                aria-label="Close list and show map"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex shrink-0 justify-center pb-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setMobileMainView("map")}
+                className="h-1.5 w-14 rounded-full bg-ink/25"
+                aria-label="Show map"
+              />
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden px-1 pb-[env(safe-area-inset-bottom)]">
+              <IncidentList
+                incidents={incidentsWithEta}
+                userLocation={userLocation}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onViewCamera={setCameraViewIncident}
+                onShowDetails={setDetailIncident}
+                onNavigate={(incident) => {
+                  const [lng, lat] = incident.coordinates;
+                  openNavigation(lat, lng, incident.description);
+                }}
+                onNavigateWaze={(incident) => {
+                  const [lng, lat] = incident.coordinates;
+                  openWazeNavigation(lat, lng, incident.description);
+                }}
+                tier={tier}
+                loading={loading}
+              />
+            </div>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setFilterPanelOpen(true)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-paper shadow-md"
-          aria-label="Filters"
-        >
-          <Sliders className="size-5" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setMobileMainView((v) => (v === "map" ? "list" : "map"))
-          }
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-paper shadow-md"
-          aria-label={mobileMainView === "map" ? "Show list" : "Show map"}
-        >
-          {mobileMainView === "map" ? (
-            <List className="size-5" strokeWidth={2} />
-          ) : (
-            <MapIcon className="size-5" strokeWidth={2} />
-          )}
-        </button>
-      </header>
+      ) : null}
 
-      <div className="shrink-0 border-b border-ink/[0.06] bg-ice/25 px-3 py-1.5 md:hidden">
-        <DriverShortcutsBar cityId={cityId} />
-      </div>
+      <DriverAccountSheet
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        userName={userName}
+        userEmail={userEmail}
+        tier={tier}
+        quickNavs={quickNavs}
+        onQuickNavsSaved={(navs) => void persistQuickNavs(navs)}
+        onOpenAlertPreferences={() => setPrefsOpen(true)}
+      />
 
       {prefsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -501,160 +704,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main content - Desktop: sidebar + map | Mobile: full screen map only */}
-      <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden md:flex-row md:gap-4 md:p-4">
-        <aside className="hidden min-h-0 w-full max-w-[420px] flex-none flex-col overflow-hidden rounded-2xl border border-ink/[0.08] bg-paper shadow-sm md:flex md:w-96">
-          <h2 className="shrink-0 border-b border-ink/[0.08] px-4 py-2.5 font-display text-sm font-bold text-muted">
-            Incidents
-          </h2>
-          <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
-          <IncidentList
-            incidents={incidentsWithEta}
-            userLocation={userLocation}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onViewCamera={setCameraViewIncident}
-            onShowDetails={setDetailIncident}
-            onNavigate={(incident) => {
-              const [lng, lat] = incident.coordinates;
-              openNavigation(lat, lng, incident.description);
-            }}
-            onNavigateWaze={(incident) => {
-              const [lng, lat] = incident.coordinates;
-              openWazeNavigation(lat, lng, incident.description);
-            }}
-            tier={tier}
-            loading={loading}
-          />
-          </div>
-        </aside>
-
-        {/* Map section - Full screen on mobile, regular on desktop */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:hidden">
-          {mobileMainView === "list" ? (
-            <IncidentList
-              incidents={incidentsWithEta}
-              userLocation={userLocation}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onViewCamera={setCameraViewIncident}
-              onShowDetails={setDetailIncident}
-              onNavigate={(incident) => {
-                const [lng, lat] = incident.coordinates;
-                openNavigation(lat, lng, incident.description);
-              }}
-              onNavigateWaze={(incident) => {
-                const [lng, lat] = incident.coordinates;
-                openWazeNavigation(lat, lng, incident.description);
-              }}
-              tier={tier}
-              loading={loading}
-            />
-          ) : (
-            <div className="relative min-h-0 flex-1">
-              <div className="absolute inset-0 min-h-0">
-                <Map
-                  incidents={incidentsWithEta}
-                  userLocation={userLocation}
-                  selectedId={selectedId}
-                  onIncidentSelect={(id) => {
-                    setSelectedId(id);
-                    setMobileMainView("list");
-                  }}
-                  heatmapOn={heatmapOn}
-                  heatmapPeriod={heatmapPeriod}
-                  heatmapCityId={cityId}
-                  heatmapDeviceId={getOrCreateDeviceId() || null}
-                  heatmapSource={heatmapSource}
-                  onHeatmapBlocked={() => {
-                    setHeatmapOn(false);
-                    setHeatmapBlocked(true);
-                  }}
-                  showTrafficFlow={filters.showTrafficFlow}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <section className="relative hidden min-h-0 flex-1 flex-col md:flex">
-          {/* Desktop-only controls above map */}
-          <div className="hidden md:flex items-center gap-2 shrink-0 flex-wrap mb-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (tier === "free" && !heatmapOn) {
-                  setHeatmapOn(true);
-                  setHeatmapBlocked(false);
-                } else {
-                  setHeatmapOn((v) => !v);
-                  setHeatmapBlocked(false);
-                }
-              }}
-              className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
-                heatmapOn
-                  ? "border border-sky/40 bg-sky/15 text-deep"
-                  : "border border-ink/10 bg-ice/80 text-ink hover:bg-ice"
-              }`}
-            >
-              Heatmap {heatmapOn ? "On" : "Off"}
-            </button>
-            {heatmapOn && (
-              <>
-                <select
-                  value={heatmapSource}
-                  onChange={(e) =>
-                    setHeatmapSource(e.target.value as "platform" | "live")
-                  }
-                  className="rounded-lg border border-ink/12 bg-ice/80 px-2 py-1.5 text-xs text-ink"
-                  title="Platform = our saved data; Live = TomTom right now"
-                >
-                  <option value="platform">Platform data</option>
-                  <option value="live">TomTom live</option>
-                </select>
-                {heatmapSource === "platform" && (
-                  <select
-                    value={heatmapPeriod}
-                    onChange={(e) =>
-                      setHeatmapPeriod(
-                        e.target.value as "day" | "week" | "month",
-                      )
-                    }
-                    className="rounded-lg border border-ink/12 bg-ice/80 px-2 py-1.5 text-xs text-ink"
-                  >
-                    <option value="day">Last 24h</option>
-                    <option value="week">Last 7 days</option>
-                    <option value="month">Last 30 days</option>
-                  </select>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Map container */}
-          <div className="flex-1 min-h-0">
-            <Map
-              incidents={incidentsWithEta}
-              userLocation={userLocation}
-              selectedId={selectedId}
-              onIncidentSelect={(id) => {
-                setSelectedId(id);
-              }}
-              heatmapOn={heatmapOn}
-              heatmapPeriod={heatmapPeriod}
-              heatmapCityId={cityId}
-              heatmapDeviceId={getOrCreateDeviceId() || null}
-              heatmapSource={heatmapSource}
-              onHeatmapBlocked={() => {
-                setHeatmapOn(false);
-                setHeatmapBlocked(true);
-              }}
-              showTrafficFlow={filters.showTrafficFlow}
-            />
-          </div>
-        </section>
-      </div>
-
       {/* Mobile menu drawer */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex flex-col bg-paper md:hidden">
@@ -677,8 +726,8 @@ export default function Home() {
                 <User className="size-6 text-muted" />
               </div>
               <div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-sky px-3 py-1 text-xs font-bold uppercase tracking-wide text-paper">
-                  <span className="size-1.5 rounded-full bg-paper" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-ink/12 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-ink shadow-sm">
+                  <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
                   Online
                 </span>
                 {userName && (
@@ -725,40 +774,15 @@ export default function Home() {
             >
               Filters
             </button>
-            <a
-              href="/insights"
-              className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
-            >
-              Insights
-            </a>
-            <a
-              href="/social"
-              className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
-            >
-              Crowd & spots
-            </a>
-            <a
-              href="/company"
-              className="block w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
-            >
-              Fleet billing
-            </a>
             <button
               type="button"
               onClick={() => {
                 setMobileMenuOpen(false);
-                setPrefsOpen(true);
+                setAccountOpen(true);
               }}
               className="w-full rounded-xl border border-ink/10 bg-ice/60 px-4 py-3 text-left font-semibold text-ink transition hover:bg-ice"
             >
-              Preferences
-            </button>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="w-full rounded-xl bg-red-500/10 px-4 py-3 text-left font-semibold text-red-700 transition hover:bg-red-500/15"
-            >
-              Sign out
+              Account
             </button>
           </div>
         </div>
@@ -784,17 +808,17 @@ export default function Home() {
       {(error || locationError || heatmapBlocked) && (
         <div className="fixed right-4 top-16 z-20 flex max-w-sm flex-col gap-2">
           {error && (
-            <div className="rounded-lg border border-red-300/60 bg-red-50 p-2 text-xs text-red-700 shadow-lg backdrop-blur">
+            <div className="rounded-lg border border-red-300/60 bg-red-50 p-2 text-xs text-red-700 shadow-lg">
               {error}
             </div>
           )}
           {locationError && (
-            <div className="rounded-lg border border-amber-300/50 bg-amber-50 p-2 text-xs text-amber-900 shadow-lg backdrop-blur">
+            <div className="rounded-lg border border-amber-300/50 bg-amber-50 p-2 text-xs text-amber-900 shadow-lg">
               {locationError} Enable location for distance and alerts.
             </div>
           )}
           {heatmapBlocked && (
-            <div className="rounded-lg border border-amber-300/50 bg-amber-50 p-2 text-xs text-amber-900 shadow-lg backdrop-blur">
+            <div className="rounded-lg border border-amber-300/50 bg-amber-50 p-2 text-xs text-amber-900 shadow-lg">
               Heatmap is a Pro feature. Upgrade to unlock.
             </div>
           )}
@@ -829,7 +853,7 @@ export default function Home() {
         isOpen={filterPanelOpen}
         onClose={() => setFilterPanelOpen(false)}
         filters={filters}
-        onFiltersChange={setFilters}
+        onFiltersChange={persistMapFilters}
       />
 
       <PushNotificationManager userLocation={userLocation} />

@@ -6,11 +6,15 @@ import {
   getStripe,
   stripeConfigured,
 } from "@/lib/stripe";
+import {
+  getResolvedPriceOrgSeatMonthly,
+  getResolvedPriceProMonthly,
+} from "@/lib/platformSettings";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!stripeConfigured()) {
+  if (!(await stripeConfigured())) {
     return NextResponse.json(
       { error: "Billing is not configured (missing STRIPE_SECRET_KEY)." },
       { status: 503 },
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const base = billingOrigin();
 
   const successUrl = `${base}/dashboard?checkout=success`;
@@ -63,13 +67,12 @@ export async function POST(request: NextRequest) {
 
   try {
     if (mode === "pro") {
-      const price =
-        process.env.STRIPE_PRICE_PRO_MONTHLY || process.env.STRIPE_PRICE_PRO;
+      const price = await getResolvedPriceProMonthly();
       if (!price) {
         return NextResponse.json(
           {
             error:
-              "Missing STRIPE_PRICE_PRO_MONTHLY (or STRIPE_PRICE_PRO) env var.",
+              "Missing STRIPE_PRICE_PRO_MONTHLY (or STRIPE_PRICE_PRO) env var or admin platform setting.",
           },
           { status: 503 },
         );
@@ -126,14 +129,12 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const priceSeat =
-        process.env.STRIPE_PRICE_ORG_SEAT_MONTHLY ||
-        process.env.STRIPE_PRICE_SEAT;
+      const priceSeat = await getResolvedPriceOrgSeatMonthly();
       if (!priceSeat) {
         return NextResponse.json(
           {
             error:
-              "Missing STRIPE_PRICE_ORG_SEAT_MONTHLY (or STRIPE_PRICE_SEAT) env var.",
+              "Missing STRIPE_PRICE_ORG_SEAT_MONTHLY (or STRIPE_PRICE_SEAT) env var or admin platform setting.",
           },
           { status: 503 },
         );

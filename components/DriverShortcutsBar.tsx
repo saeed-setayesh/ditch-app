@@ -1,15 +1,48 @@
 "use client";
 
-import { driverShortcutsForCity } from "@/lib/driverShortcuts";
+import { type DriverShortcut } from "@/lib/driverShortcuts";
 import { openNavigation } from "@/lib/navigation";
 
-export default function DriverShortcutsBar({ cityId }: { cityId: string }) {
-  const shortcuts = driverShortcutsForCity(cityId);
+type DriverShortcutsBarProps = {
+  shortcuts: DriverShortcut[];
+  /** Horizontal chips or vertical list under heatmap */
+  layout?: "row" | "list";
+};
+
+export default function DriverShortcutsBar({
+  shortcuts,
+  layout = "list",
+}: DriverShortcutsBarProps) {
   if (shortcuts.length === 0) return null;
+
+  const buttonClass =
+    "rounded-lg border border-ink/12 bg-white px-3 py-2 text-left text-xs font-semibold text-ink shadow-sm transition-colors hover:bg-ice";
+
+  if (layout === "list") {
+    return (
+      <div className="flex w-full min-w-0 flex-col items-end gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-ink/80">
+          Quick nav
+        </span>
+        <div className="flex w-full max-w-[14rem] flex-col items-stretch gap-1">
+          {shortcuts.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => openNavigation(s.lat, s.lng, s.label)}
+              className={buttonClass}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5">
-      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted">
+      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-ink/80">
         Quick nav
       </span>
       {shortcuts.map((s) => (
@@ -17,7 +50,7 @@ export default function DriverShortcutsBar({ cityId }: { cityId: string }) {
           key={s.id}
           type="button"
           onClick={() => openNavigation(s.lat, s.lng, s.label)}
-          className="shrink-0 rounded-full border border-ink/12 bg-paper px-3 py-1 text-xs font-semibold text-ink shadow-sm transition hover:border-sky/35 hover:bg-sky/10"
+          className={`shrink-0 ${buttonClass} text-center`}
         >
           {s.label}
         </button>

@@ -10,7 +10,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  if (!stripeConfigured()) {
+  if (!(await stripeConfigured())) {
     return NextResponse.json(
       { error: "Billing is not configured." },
       { status: 503 },
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   }
 
   const base = billingOrigin();
-  const stripe = getStripe();
+  const stripe = await getStripe();
 
   try {
     if (!scope || scope === "user") {

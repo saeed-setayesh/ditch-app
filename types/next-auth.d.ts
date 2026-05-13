@@ -5,6 +5,11 @@ declare module "next-auth" {
     user: DefaultSession["user"] & {
       id: string;
       tier?: string;
+      role?: string;
+      isAdmin?: boolean;
+      orgRole?: string | null;
+      orgName?: string | null;
+      organizationId?: string | null;
     };
   }
 }
@@ -13,5 +18,10 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     tier?: string;
+    role?: string;
+    isAdmin?: boolean;
+    orgRole?: string | null;
+    orgName?: string | null;
+    organizationId?: string | null;
   }
 }

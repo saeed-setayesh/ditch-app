@@ -124,7 +124,7 @@ function CtaSecondary({
 }: ComponentProps<typeof Link> & { className?: string }) {
   return (
     <Link
-      className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-[10px] border border-ink/15 bg-paper/80 px-8 text-[15px] font-bold text-ink backdrop-blur transition hover:border-deep/40 hover:bg-ice ${className}`}
+      className={`inline-flex h-[52px] items-center justify-center gap-2 rounded-[10px] border border-ink/15 bg-paper px-8 text-[15px] font-bold text-ink transition hover:border-deep/40 hover:bg-ice ${className}`}
       {...props}
     >
       {children}
@@ -258,7 +258,7 @@ export default function LandingPage() {
 
       <section className="relative z-10 mx-auto w-full max-w-[1100px] px-6 pb-20 pt-14">
         <div className="max-w-[780px]">
-          <div className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-sky/30 bg-paper/90 px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.04em] text-deep shadow-sm backdrop-blur">
+          <div className="mb-8 inline-flex items-center gap-1.5 rounded-full border border-sky/30 bg-paper px-3.5 py-1.5 text-[12px] font-medium uppercase tracking-[0.04em] text-deep shadow-sm">
             <Radio className="size-3" />
             Real-time tracking across Ontario
           </div>
@@ -303,7 +303,7 @@ export default function LandingPage() {
                   <Download className="size-3.5" /> Install app to home screen
                 </button>
               ) : isIOS ? (
-                <p className="inline-flex max-w-md items-center gap-2 rounded-[10px] border border-ink/10 bg-paper/90 px-4 py-2.5 text-xs text-muted backdrop-blur">
+                <p className="inline-flex max-w-md items-center gap-2 rounded-[10px] border border-ink/10 bg-paper px-4 py-2.5 text-xs text-muted">
                   <Share className="size-3.5 shrink-0 text-deep" /> Tap{" "}
                   <strong className="text-ink">Share</strong> then{" "}
                   <strong className="text-ink">&quot;Add to Home Screen&quot;</strong>
@@ -361,7 +361,7 @@ export default function LandingPage() {
             return (
               <div
                 key={f.title}
-                className="flex cursor-default flex-col gap-[18px] rounded-2xl border border-ink/[0.08] bg-paper/70 p-7 shadow-sm backdrop-blur transition hover:border-sky/25 hover:shadow-md"
+                className="flex cursor-default flex-col gap-[18px] rounded-2xl border border-ink/[0.08] bg-paper p-7 shadow-sm transition hover:border-sky/25 hover:shadow-md"
               >
                 <div
                   className="flex size-11 shrink-0 items-center justify-center rounded-xl border"

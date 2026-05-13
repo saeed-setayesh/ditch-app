@@ -5,24 +5,25 @@ import {
   syncStripeSubscription,
 } from "@/lib/billing/stripeSync";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { getResolvedWebhookSecret } from "@/lib/platformSettings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  if (!stripeConfigured()) {
+  if (!(await stripeConfigured())) {
     return NextResponse.json({ error: "Not configured." }, { status: 503 });
   }
 
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const secret = await getResolvedWebhookSecret();
   if (!secret) {
     return NextResponse.json(
-      { error: "STRIPE_WEBHOOK_SECRET is not set." },
+      { error: "Webhook signing secret is not configured (STRIPE_WEBHOOK_SECRET or admin platform settings)." },
       { status: 503 },
     );
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripe();
   let event: Stripe.Event;
   try {
     const payload = await request.text();

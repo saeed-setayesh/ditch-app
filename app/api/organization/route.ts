@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       ? name.trim().slice(0, 120)
       : "My fleet";
 
-  if (!stripeConfigured()) {
+  if (!(await stripeConfigured())) {
     return NextResponse.json(
       { error: "Billing / Stripe must be configured to create fleet organizations." },
       { status: 503 },
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
   });
 
   try {
-    const stripe = getStripe();
+    const stripe = await getStripe();
 
     const organization = await prisma.organization.create({
       data: { name: orgName },

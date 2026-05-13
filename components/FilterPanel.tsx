@@ -1,27 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, useEffect } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
-  AccidentIcon,
-  CollisionIcon,
-  FireIcon,
-  HazardIcon,
-  JamIcon,
-  MedicalIcon,
-  PoliceIcon,
-  WeatherIcon,
-} from "./IncidentIcons";
+  Activity,
+  Ambulance,
+  Car,
+  CarFront,
+  CloudSun,
+  Flame,
+  MapPinned,
+  Route,
+  Shield,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import type { IncidentType } from "./IncidentIcons";
 
-export type IncidentType =
-  | "accident"
-  | "collision"
-  | "fire"
-  | "hazard"
-  | "jam"
-  | "medical"
-  | "police"
-  | "weather";
+export type { IncidentType };
 
 export type FilterState = {
   incidentTypes: IncidentType[];
@@ -39,17 +35,17 @@ type FilterPanelProps = {
 const INCIDENT_TYPES: {
   id: IncidentType;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  Icon: LucideIcon;
   color: string;
 }[] = [
-  { id: "accident", label: "Accident", icon: AccidentIcon, color: "#F38A1F" },
-  { id: "collision", label: "Collision", icon: CollisionIcon, color: "#22B86C" },
-  { id: "fire", label: "Fire", icon: FireIcon, color: "#E63946" },
-  { id: "hazard", label: "Hazard", icon: HazardIcon, color: "#F4C430" },
-  { id: "jam", label: "Jam", icon: JamIcon, color: "#8C4FCF" },
-  { id: "medical", label: "Medical", icon: MedicalIcon, color: "#E63946" },
-  { id: "police", label: "Police", icon: PoliceIcon, color: "#3FA7E6" },
-  { id: "weather", label: "Weather", icon: WeatherIcon, color: "#28C6C8" },
+  { id: "accident", label: "Accident", Icon: CarFront, color: "#F38A1F" },
+  { id: "collision", label: "Collision", Icon: Car, color: "#22B86C" },
+  { id: "fire", label: "Fire", Icon: Flame, color: "#E63946" },
+  { id: "hazard", label: "Hazard", Icon: TriangleAlert, color: "#F4C430" },
+  { id: "jam", label: "Jam", Icon: Route, color: "#8C4FCF" },
+  { id: "medical", label: "Medical", Icon: Ambulance, color: "#E63946" },
+  { id: "police", label: "Police", Icon: Shield, color: "#3FA7E6" },
+  { id: "weather", label: "Weather", Icon: CloudSun, color: "#28C6C8" },
 ];
 
 export default function FilterPanel({
@@ -60,11 +56,15 @@ export default function FilterPanel({
 }: FilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
   const toggleIncidentType = (type: IncidentType) => {
     const newTypes = localFilters.incidentTypes.includes(type)
       ? localFilters.incidentTypes.filter((t) => t !== type)
       : [...localFilters.incidentTypes, type];
-    
+
     const newFilters = { ...localFilters, incidentTypes: newTypes };
     setLocalFilters(newFilters);
     onFiltersChange(newFilters);
@@ -125,7 +125,7 @@ export default function FilterPanel({
               </h3>
               <div className="grid grid-cols-4 gap-3.5">
                 {INCIDENT_TYPES.map((type) => {
-                  const Icon = type.icon;
+                  const { Icon } = type;
                   const isActive = localFilters.incidentTypes.includes(type.id);
 
                   return (
@@ -135,14 +135,23 @@ export default function FilterPanel({
                       onClick={() => toggleIncidentType(type.id)}
                       className={`flex flex-col items-center gap-1.5 rounded-xl p-2 transition-all ${
                         isActive
-                          ? "bg-sky/10 ring-2 ring-sky"
+                          ? "bg-sky/[0.08] ring-2 ring-sky ring-offset-2 ring-offset-paper"
                           : "bg-ice/60 hover:bg-ice"
                       }`}
                     >
                       <div
-                        className={`transition-opacity ${isActive ? "opacity-100" : "opacity-60"}`}
+                        className={`flex h-[52px] w-[52px] items-center justify-center rounded-full text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_2px_6px_rgba(0,0,0,0.12)] transition-[transform,opacity] ${
+                          isActive ? "scale-100 opacity-100" : "opacity-[0.72] hover:opacity-90"
+                        }`}
+                        style={{
+                          background: `linear-gradient(150deg, ${type.color} 0%, color-mix(in srgb, ${type.color} 58%, #0c1724) 100%)`,
+                        }}
                       >
-                        <Icon size={48} />
+                        <Icon
+                          className="h-[26px] w-[26px] shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]"
+                          strokeWidth={2.35}
+                          aria-hidden
+                        />
                       </div>
                       <span
                         className={`text-center text-[11px] font-medium leading-tight ${
@@ -158,8 +167,11 @@ export default function FilterPanel({
             </div>
 
             <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-ink">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ice text-deep">
+                    <MapPinned className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  </span>
                   Radius to Monitor
                 </h3>
                 <span className="font-mono-brand text-sm font-semibold text-deep">
@@ -192,13 +204,16 @@ export default function FilterPanel({
             </div>
 
             <div className="flex items-center justify-between rounded-xl bg-ice/80 px-4 py-3.5">
-              <span className="text-sm font-semibold text-ink">
+              <span className="flex items-center gap-2.5 text-sm font-semibold text-ink">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-paper text-sky shadow-sm">
+                  <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
+                </span>
                 Show Traffic
               </span>
               <button
                 type="button"
                 onClick={handleTrafficFlowToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
                   localFilters.showTrafficFlow ? "bg-sky" : "bg-ink/20"
                 }`}
               >

@@ -8,6 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "brand-icons": "node scripts/regen-brand-icons.mjs",
+    "grant-pro": "node scripts/grant-pro.mjs",
+    "create-random-admin": "node scripts/create-random-admin.mjs",
+    "seed-company": "node scripts/seed-company-account.mjs",
+    "db:seed": "prisma db seed",
     "postinstall": "if [ -f prisma/schema.prisma ]; then prisma generate; else echo \"prisma schema not found, skipping prisma generate\"; fi"
   },
   "dependencies": {
@@ -37,5 +41,8 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   }
 }

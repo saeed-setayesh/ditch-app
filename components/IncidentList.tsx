@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, createElement } from "react";
+import { useState, useEffect, createElement, useRef } from "react";
 import { haversineKm } from "@/lib/geo";
 import { getIconType, getIconComponent } from "./IncidentIcons";
 import { Camera, Info, Clock, Navigation, MapPin } from "lucide-react";
@@ -104,11 +104,11 @@ function IncidentCard({
 
   return (
     <div
-      data-incident-id={incident.id}
-      className={`w-full border-b border-ink/[0.06] text-left transition-colors duration-150 ${
+      data-list-incident-id={incident.id}
+      className={`w-full border-b border-ink/10 text-left transition-colors duration-150 ${
         isSelected
-          ? "bg-sky/[0.08]"
-          : "bg-transparent hover:bg-ice/80"
+          ? "bg-sky/15 hover:bg-sky/18"
+          : "bg-transparent hover:bg-sky/10"
       }`}
     >
       <div
@@ -121,7 +121,7 @@ function IncidentCard({
             onSelect(incident.id);
           }
         }}
-        className="cursor-pointer px-4 py-3.5"
+        className="cursor-pointer px-4 py-3.5 outline-none focus-visible:z-1 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky/55"
       >
         <div className="flex items-start gap-3">
           <div className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.14)] [&_svg]:h-full [&_svg]:w-full">
@@ -301,6 +301,7 @@ export default function IncidentList({
 }: IncidentListProps) {
   const typeFilter = INCIDENT_FILTER_OPTIONS[0];
   const [showActive, setShowActive] = useState(true);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const filtered = filterIncidents(incidents, typeFilter);
   
@@ -309,13 +310,28 @@ export default function IncidentList({
     ? filtered.filter(inc => inc.status !== "likely_cleared")
     : filtered;
 
+  useEffect(() => {
+    if (!selectedId || !scrollAreaRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      const escaped =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+          ? CSS.escape(selectedId)
+          : selectedId;
+      const row = scrollAreaRef.current?.querySelector(
+        `[data-list-incident-id="${escaped}"]`,
+      );
+      row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId, showActive, incidents.length]);
+
   if (loading) {
     return (
       <div className="space-y-0 p-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="mb-2 h-20 animate-pulse rounded-lg bg-ice"
+            className="mb-2 h-20 animate-pulse rounded-lg bg-white/45"
           />
         ))}
       </div>
@@ -323,19 +339,16 @@ export default function IncidentList({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-paper">
+    <div className="flex h-full min-h-0 flex-col bg-transparent">
       <div className="shrink-0 px-3 pb-2 pt-1">
-        <div
-          className="grid grid-cols-2 gap-0 rounded-[14px] p-1"
-          style={{ background: "rgba(11, 51, 84, 0.06)" }}
-        >
+        <div className="grid grid-cols-2 gap-0 rounded-[14px] bg-ice/90 p-1">
           <button
             type="button"
             onClick={() => setShowActive(true)}
-            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-all ${
+            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-colors ${
               showActive
-                ? "bg-paper text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
-                : "text-muted"
+                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
+                : "text-muted hover:bg-white/70 hover:text-ink"
             }`}
           >
             Active
@@ -343,17 +356,20 @@ export default function IncidentList({
           <button
             type="button"
             onClick={() => setShowActive(false)}
-            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-all ${
+            className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-colors ${
               !showActive
-                ? "bg-paper text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
-                : "text-muted"
+                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
+                : "text-muted hover:bg-white/70 hover:text-ink"
             }`}
           >
             All
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+      <div
+        ref={scrollAreaRef}
+        className="min-h-0 flex-1 overflow-y-auto pb-6"
+      >
         {displayedIncidents.length === 0 ? (
           <div className="p-6 text-center text-muted">
             <p className="text-lg text-ink">

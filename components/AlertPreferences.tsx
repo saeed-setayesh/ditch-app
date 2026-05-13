@@ -3,6 +3,12 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { CITIES } from "@/lib/cities";
+import {
+  MAX_RADIUS_FREE_KM,
+  MAX_RADIUS_PRO_KM,
+  PRO_BENEFITS_HEADLINE,
+  getProBenefitBullets,
+} from "@/lib/proPlanCopy";
 
 const INCIDENT_TYPE_OPTIONS: { value: number; label: string }[] = [
   { value: 1, label: "Accident" },
@@ -49,8 +55,8 @@ type Props = {
   onSaved?: (prefs: { cityId?: string; incidentSources?: string[] }) => void;
 };
 
-const MAX_RADIUS_FREE = 5;
-const MAX_RADIUS_PRO = 20;
+const MAX_RADIUS_FREE = MAX_RADIUS_FREE_KM;
+const MAX_RADIUS_PRO = MAX_RADIUS_PRO_KM;
 
 export default function AlertPreferences({
   onClose,
@@ -246,9 +252,18 @@ export default function AlertPreferences({
             ? "Pro"
             : "Free"}
         </p>
-        <p className="mt-1 text-xs text-muted">
-          Pro includes heatmaps, larger alert radius (up to {MAX_RADIUS_PRO}{" "}
-          km), and tow-score filters — unlocked via Stripe.
+        {planTier !== "pro" ? (
+          <p className="mt-2 text-xs font-semibold text-ink">
+            {PRO_BENEFITS_HEADLINE}
+          </p>
+        ) : null}
+        <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted">
+          {getProBenefitBullets().map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+        <p className="mt-2 text-xs text-muted">
+          Unlocked with a Pro subscription through Stripe.
         </p>
         {!billing?.authenticated ? (
           <p className="mt-2 text-xs text-muted">

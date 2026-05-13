@@ -68,18 +68,19 @@ function pinColorForKind(type: MapPinKind): string {
   }
 }
 
+/** 24×24 Lucide-style glyphs (white on colored pin); paths match lucide-react exports. */
 const GLYPHS: Record<MapPinKind, string> = {
-  accident: `<path d="M3 14l1.5-4 2-1h4l2.5 4h7v4h-1a2 2 0 1 1-4 0H9a2 2 0 1 1-4 0H3v-3z"/><path d="M14 5l1 3M18 4l-2 3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>`,
-  collision: `<path d="M2 14l1-3 2-1h4l2 3h4l2-3h2l1 3v3h-2a2 2 0 1 1-4 0h-2a2 2 0 1 1-4 0H4a2 2 0 1 1-4 0v-3z"/>`,
-  fire: `<path d="M12 3s4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3s1 2 3 2c0-3-2-4 0-7z"/>`,
-  hazard: `<rect x="11" y="6" width="2.2" height="8" rx="1"/><circle cx="12" cy="17" r="1.4"/>`,
-  jam: `<rect x="4" y="4" width="11" height="6" rx="2"/><rect x="9" y="14" width="11" height="6" rx="2"/><circle cx="6.5" cy="10.5" r="1.2"/><circle cx="12.5" cy="10.5" r="1.2"/><circle cx="11.5" cy="20.5" r="1.2"/><circle cx="17.5" cy="20.5" r="1.2"/>`,
-  medical: `<path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/>`,
-  police: `<path d="M6 12a6 6 0 0 1 12 0v4H6v-4z"/><circle cx="12" cy="6" r="2"/><rect x="4" y="16" width="16" height="2" rx="1"/>`,
-  weather: `<path d="M7 13a4 4 0 1 1 1.5-7.7A5 5 0 0 1 18 9a3 3 0 0 1 0 6H7z"/><path d="M9 18l-1 2M13 18l-1 2M17 18l-1 2" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none"/>`,
-  roadwork: `<path d="M5 9h14l-2 11H7L5 9zM3 7h18v2H3z"/>`,
-  breakdown: `<path d="M2 16h7l3-4h6l4 4v3h-2"/><circle cx="7" cy="19" r="1.6"/><circle cx="18" cy="19" r="1.6"/>`,
-  other: `<circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.8"/>`,
+  accident: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/></g>`,
+  collision: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></g>`,
+  fire: `<path fill="#ffffff" d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/>`,
+  hazard: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></g>`,
+  jam: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></g>`,
+  medical: `<g fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10H6"/><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14"/><path d="M8 8v4"/><path d="M9 18h6"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></g>`,
+  police: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></g>`,
+  weather: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></g>`,
+  roadwork: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="8" rx="1"/><path d="M17 14v7"/><path d="M7 14v7"/><path d="M17 3v3"/><path d="M7 3v3"/><path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/></g>`,
+  breakdown: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></g>`,
+  other: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></g>`,
 };
 
 const PIN_BOX = 36;
@@ -157,8 +158,8 @@ export function buildIncidentPinHtml(iconCategory: number, selected: boolean): s
     selected
       ? `<circle cx="${CX}" cy="${CX}" r="17.5" fill="none" stroke="#ffffff" stroke-width="3"/>`
       : "";
-  /* viewBox centered pin; glyphs from 24×24 Incidenta primitives */
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}">${ring}<circle cx="${CX}" cy="${CX}" r="15" fill="${color}"/><g transform="translate(${CX},${CX}) scale(0.62) translate(-12,-12)" fill="#fff">${glyph}</g></svg>`;
+  /* viewBox centered pin; inner coords are Lucide 24×24 */
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}">${ring}<circle cx="${CX}" cy="${CX}" r="15" fill="${color}"/><g transform="translate(${CX},${CX}) scale(0.6) translate(-12,-12)">${glyph}</g></svg>`;
 }
 
 export function suggestedMaxMarkers(): number {

@@ -16,6 +16,8 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?   // hashed via bcryptjs – null for OAuth users
+  /// "user" | "admin" — admins can access /admin (also see ADMIN_EMAILS env)
+  role          String    @default("user")
   tier          String    @default("free")
   /// B2C Stripe customer (Checkout / Customer Portal)
   stripeCustomerId         String? @unique
@@ -33,6 +35,15 @@ model User {
   rewardLedger     RewardLedgerEntry[]
 
   @@map("users")
+}
+
+/// Key/value platform config (e.g. Stripe overrides). Secrets stored here apply at runtime after cache TTL (see lib/platformSettings).
+model PlatformSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
 }
 
 model Account {
@@ -96,6 +107,10 @@ model PushSubscription {
   minTowScore        Int?
   /// Comma-separated list of incident sources the user prefers: e.g. "tomtom", "511on", or "tomtom,511on"
   incidentSources    String?
+  /// Up to 3 driver-defined quick navigation destinations: [{ id, label, lat, lng }, ...]
+  driverQuickNavs    Json?
+  /// Driver map UI: incident type chips, list radius (km), traffic layer — see lib/driverMapFilters.ts
+  driverMapFilters   Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

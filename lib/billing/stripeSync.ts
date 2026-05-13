@@ -47,7 +47,7 @@ export async function applyCheckoutSessionCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
   const kind = session.metadata?.kind;
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const subscriptionId = session.subscription;
   const customerId = session.customer;
   if (typeof subscriptionId !== "string" || typeof customerId !== "string") {

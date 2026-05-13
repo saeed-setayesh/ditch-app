@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
+import { parseDriverQuickNavsJson } from "@/lib/driverShortcuts";
+import { parseDriverMapFiltersJson } from "@/lib/driverMapFilters";
 
 const VALID_ICON_CATEGORIES = new Set([
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14,
@@ -134,6 +136,36 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    if (body.driverQuickNavs !== undefined) {
+      if (body.driverQuickNavs === null) {
+        update.driverQuickNavs = null;
+      } else {
+        const navs = parseDriverQuickNavsJson(body.driverQuickNavs);
+        if (navs === null) {
+          return NextResponse.json(
+            { error: "Invalid driverQuickNavs (max 3, label/lat/lng rules)" },
+            { status: 400 },
+          );
+        }
+        update.driverQuickNavs = navs;
+      }
+    }
+
+    if (body.driverMapFilters !== undefined) {
+      if (body.driverMapFilters === null) {
+        update.driverMapFilters = null;
+      } else {
+        const mapFilters = parseDriverMapFiltersJson(body.driverMapFilters);
+        if (mapFilters === null) {
+          return NextResponse.json(
+            { error: "Invalid driverMapFilters" },
+            { status: 400 },
+          );
+        }
+        update.driverMapFilters = mapFilters as object;
+      }
+    }
+
     if (existing) {
       const updated = await prisma.pushSubscription.updateMany({
         where,
@@ -191,6 +223,12 @@ export async function PATCH(request: NextRequest) {
         }),
         ...(update.incidentSources !== undefined && {
           incidentSources: update.incidentSources as string | null,
+        }),
+        ...(update.driverQuickNavs !== undefined && {
+          driverQuickNavs: update.driverQuickNavs,
+        }),
+        ...(update.driverMapFilters !== undefined && {
+          driverMapFilters: update.driverMapFilters,
         }),
       },
       update: update as Record<string, unknown>,

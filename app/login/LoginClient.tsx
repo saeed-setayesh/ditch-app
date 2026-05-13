@@ -6,15 +6,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppLogoMark from "@/components/brand/AppLogoMark";
 
+type Portal = "driver" | "company";
+
 export default function LoginClient() {
   const router = useRouter();
-  const [callbackUrl, setCallbackUrl] = useState("/dashboard");
+  const [explicitCallback, setExplicitCallback] = useState<string | null>(null);
+  const [portal, setPortal] = useState<Portal>("driver");
 
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const cb = params.get("callbackUrl");
-      if (cb) setCallbackUrl(cb);
+      if (cb) setExplicitCallback(cb);
     } catch {
       // ignore
     }
@@ -30,17 +33,26 @@ export default function LoginClient() {
     setError(null);
     setLoading(true);
 
+    const destination =
+      explicitCallback ??
+      (portal === "company" ? "/company/dashboard" : "/dashboard");
+
     try {
       const result = await signIn("credentials", {
         email: email.toLowerCase().trim(),
         password,
+        portal,
         redirect: false,
       });
 
       if (result?.error) {
-        setError("Invalid email or password.");
+        setError(
+          portal === "company"
+            ? "Invalid credentials or no active company seat for this account."
+            : "Invalid email or password.",
+        );
       } else {
-        router.push(callbackUrl);
+        router.push(destination);
         router.refresh();
       }
     } catch {
@@ -61,8 +73,39 @@ export default function LoginClient() {
             DitchApp Accident Alert
           </h1>
           <p className="mt-1 font-mono-brand text-sm text-deep">
-            Sign in to your account
+            {portal === "company"
+              ? "Operator hub · fleet sign-in"
+              : "Sign in to your driver account"}
           </p>
+        </div>
+
+        <div
+          className="flex w-full rounded-xl border border-ink/12 bg-paper p-1 shadow-sm"
+          role="group"
+          aria-label="Account type"
+        >
+          <button
+            type="button"
+            onClick={() => setPortal("driver")}
+            className={`min-h-[44px] flex-1 touch-manipulation rounded-lg px-3 py-2.5 text-sm font-semibold transition sm:min-h-0 ${
+              portal === "driver"
+                ? "bg-sky text-paper shadow-sm"
+                : "text-ink/70 hover:bg-ice/80"
+            }`}
+          >
+            Driver
+          </button>
+          <button
+            type="button"
+            onClick={() => setPortal("company")}
+            className={`min-h-[44px] flex-1 touch-manipulation rounded-lg px-3 py-2.5 text-sm font-semibold transition sm:min-h-0 ${
+              portal === "company"
+                ? "bg-ink text-paper shadow-sm"
+                : "text-ink/70 hover:bg-ice/80"
+            }`}
+          >
+            Company
+          </button>
         </div>
 
         {error && (
