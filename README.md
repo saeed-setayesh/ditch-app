@@ -37,7 +37,7 @@ npx prisma migrate deploy
 
 ### Production build / CI
 
-`npm run build` runs **`prisma migrate deploy`**, **`prisma generate`**, and **`next build`** when `prisma/schema.prisma` exists. Your build environment needs **`DATABASE_URL`** so migrations can run.
+`npm run build` runs **`prisma migrate deploy`**, **`prisma generate`**, and **`next build`** when `prisma/schema.prisma` exists. Your build environment needs **`DATABASE_URL`** so migrations can run. The **`prisma`** CLI is listed under **`dependencies`** so **`migrate deploy`** is available during production installs that omit devDependencies.
 
 `npm start` runs **`next start`** only.
 
