@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "if [ -f prisma/schema.prisma ]; then prisma migrate deploy && prisma generate && next build; else next build; fi",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "brand-icons": "node scripts/regen-brand-icons.mjs",
