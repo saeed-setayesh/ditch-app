@@ -6,6 +6,7 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import type { NextAuthConfig } from "next-auth";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
 import {
@@ -82,7 +83,41 @@ async function buildOAuthProviders() {
   return list;
 }
 
+/** Paths that skip login — enforced via callbacks.authorized (middleware re-exports `auth` only). */
+function isPublicPath(pathname: string): boolean {
+  const PUBLIC_PATHS = [
+    "/",
+    "/login",
+    "/register",
+    "/api/auth",
+    "/api/stripe/webhook",
+  ];
+  const PUBLIC_PREFIXES = ["/api/auth/", "/api/public/", "/_next/"];
+  const PUBLIC_FILES = ["/sw.js", "/manifest.webmanifest", "/favicon.ico"];
+
+  if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  if (PUBLIC_FILES.includes(pathname)) return true;
+  if (pathname.startsWith("/icon-")) return true;
+  if (pathname.startsWith("/_next")) return true;
+  if (
+    pathname.match(
+      /\.(png|jpg|jpeg|gif|svg|ico|webp|webmanifest|js|css|woff|woff2)$/,
+    )
+  )
+    return true;
+  return false;
+}
+
 const callbacks: NextAuthConfig["callbacks"] = {
+  authorized({ request, auth }) {
+    const { pathname } = request.nextUrl;
+    if (isPublicPath(pathname)) return true;
+    if (auth?.user) return true;
+    const url = new URL("/login", request.nextUrl.origin);
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  },
   async jwt({ token, user, trigger }) {
     if (user) token.id = user.id;
     const uid = (token.id ?? token.sub) as string | undefined;
