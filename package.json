@@ -11,8 +11,7 @@
     "grant-pro": "node scripts/grant-pro.mjs",
     "create-random-admin": "node scripts/create-random-admin.mjs",
     "seed-company": "node scripts/seed-company-account.mjs",
-    "db:seed": "prisma db seed",
-    "postinstall": "if [ -f prisma/schema.prisma ]; then prisma generate; else echo \"prisma schema not found, skipping prisma generate\"; fi"
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
