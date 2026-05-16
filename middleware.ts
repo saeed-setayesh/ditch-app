@@ -37,7 +37,7 @@ function isPublic(pathname: string): boolean {
   return false;
 }
 
-export default auth((req) => {
+export const middleware = auth((req) => {
   const { pathname } = req.nextUrl;
 
   if (isPublic(pathname)) return NextResponse.next();
@@ -50,6 +50,8 @@ export default auth((req) => {
 
   return NextResponse.next();
 });
+
+export default middleware;
 
 export const config = {
   matcher: [
