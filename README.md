@@ -4,6 +4,8 @@ A Progressive Web App for tow truck drivers in DitchApp. Shows live traffic inci
 
 ## Stack
 
+fdsfds
+
 - **Next.js** (App Router), **PostgreSQL**, **Prisma**, **Tailwind CSS**
 - **TomTom** Maps SDK + Traffic Incidents API v5
 - **Web Push** (VAPID) + service worker for notifications
