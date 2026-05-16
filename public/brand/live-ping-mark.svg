@@ -1,18 +1,13 @@
 <!--
   Live ping brand mark (Logo07) - square favicon / app icon source (from Logo/logos.jsx).
+  White tile so rings stay visible on light-blue UI chrome.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#E8F4FC"/>
-      <stop offset="100%" stop-color="#DCEEF9"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
   <g transform="translate(256 256) scale(1.92) translate(-110 -90)">
-    <circle cx="110" cy="90" r="94" stroke="#CFE6F7" stroke-width="2" opacity="0.38"/>
-    <circle cx="110" cy="90" r="74" stroke="#CFE6F7" stroke-width="2" opacity="0.55"/>
-    <circle cx="110" cy="90" r="54" stroke="#CFE6F7" stroke-width="2"/>
+    <circle cx="110" cy="90" r="94" stroke="#9EC4E8" stroke-width="2" opacity="0.55"/>
+    <circle cx="110" cy="90" r="74" stroke="#6DADE3" stroke-width="2" opacity="0.72"/>
+    <circle cx="110" cy="90" r="54" stroke="#3FA7E6" stroke-width="2"/>
     <path fill="#3FA7E6" d="M82 50H114a40,40,0,0,1,0,80H82z"/>
     <path fill="#FFFFFF" d="M96 64H114a26,26,0,0,1,0,52H96z"/>
     <circle cx="110" cy="90" r="6" fill="#1F6FB2"/>

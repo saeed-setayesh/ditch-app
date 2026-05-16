@@ -101,5 +101,77 @@ async function main() {
   console.log("[seed] Granted role=admin to", user.email);
 }
 
+/**
+ * Optional: set SEED_DVIR_ORG_ID to an organization `id` to insert one starter
+ * inspection template (editable JSON checklist v1) when the org has none.
+ */
+async function seedDvirExampleTemplate() {
+  const orgId = process.env.SEED_DVIR_ORG_ID?.trim();
+  if (!orgId) return;
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  if (!org) {
+    console.warn("[seed] SEED_DVIR_ORG_ID: organization not found:", orgId);
+    return;
+  }
+
+  const existing = await prisma.inspectionTemplate.findFirst({
+    where: { organizationId: orgId },
+  });
+  if (existing) {
+    console.log("[seed] DVIR: org already has inspection templates, skipping");
+    return;
+  }
+
+  const checklistSchema = {
+    version: 1,
+    sections: [
+      {
+        title: "Starter — brakes & tires",
+        items: [
+          {
+            id: "starter-brakes",
+            label: "Service brakes — pedal feel / air pressure acceptable",
+            defectLabels: ["Low pressure", "Pedal spongy"],
+            requirePhotoOnDefect: true,
+          },
+          {
+            id: "starter-tires",
+            label: "Tires — inflation & visible damage",
+            defectLabels: ["Under-inflated", "Cord visible"],
+            requirePhotoOnDefect: true,
+          },
+          {
+            id: "starter-lights",
+            label: "Head / tail / marker lamps operational",
+            defectLabels: ["Inoperative lamp"],
+          },
+        ],
+      },
+    ],
+  };
+
+  await prisma.$transaction(async (tx) => {
+    const t = await tx.inspectionTemplate.create({
+      data: {
+        organizationId: orgId,
+        name: "Starter CVOR-style checklist",
+        description:
+          "Example items only — customize with your compliance advisor.",
+      },
+    });
+    await tx.inspectionTemplateVersion.create({
+      data: {
+        templateId: t.id,
+        version: 1,
+        checklistSchema,
+      },
+    });
+  });
+
+  console.log("[seed] DVIR: created starter inspection template for org", orgId);
+}
+
 await main();
+await seedDvirExampleTemplate();
 await prisma.$disconnect();

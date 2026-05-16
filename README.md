@@ -4,8 +4,6 @@ A Progressive Web App for tow truck drivers in DitchApp. Shows live traffic inci
 
 ## Stack
 
-fdsfds
-
 - **Next.js** (App Router), **PostgreSQL**, **Prisma**, **Tailwind CSS**
 - **TomTom** Maps SDK + Traffic Incidents API v5
 - **Web Push** (VAPID) + service worker for notifications
@@ -49,6 +47,10 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). For push and geolocation, use HTTPS in production (or `npm run dev -- --experimental-https` locally).
+
+### Production / CI build
+
+`npm run build` runs **`prisma migrate deploy`**, then **`prisma generate`**, then **`next build`**. Set **`DATABASE_URL`** to a reachable database so migrations can apply. If you need to compile without a database, run **`next build`** directly.
 
 ## Cron (nearby push alerts + heatmap data)
 

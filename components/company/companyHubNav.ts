@@ -8,6 +8,8 @@ import {
   CreditCard,
   BarChart3,
   SlidersHorizontal,
+  ClipboardCheck,
+  FileJson,
 } from "lucide-react";
 
 export type CompanyHubNavItem = {
@@ -26,6 +28,12 @@ export const COMPANY_HUB_NAV: CompanyHubNavItem[] = [
   { href: "/company/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/company/dispatch", label: "Dispatch", Icon: MapIcon },
   { href: "/company/fleet", label: "Fleet", Icon: Truck },
+  { href: "/company/inspections", label: "Inspections", Icon: ClipboardCheck },
+  {
+    href: "/company/inspection-templates",
+    label: "Templates",
+    Icon: FileJson,
+  },
   { href: "/company/jobs", label: "Jobs", Icon: ClipboardList },
   { href: "/company/drivers", label: "Drivers", Icon: Users },
   { href: "/company/billing", label: "Billing", Icon: CreditCard },

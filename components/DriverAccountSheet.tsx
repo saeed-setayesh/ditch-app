@@ -7,21 +7,16 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPin,
-  Trash2,
-  Crosshair,
-  Tag,
   Shield,
+  Moon,
+  Sun,
 } from "lucide-react";
-import {
-  type DriverShortcut,
-  MAX_DRIVER_QUICK_NAVS,
-  DRIVER_QUICK_NAV_LABEL_MAX,
-  parseDriverQuickNavsJson,
-} from "@/lib/driverShortcuts";
+import { type DriverShortcut, MAX_DRIVER_QUICK_NAVS } from "@/lib/driverShortcuts";
 import {
   PRO_BENEFITS_HEADLINE,
   getProBenefitBullets,
 } from "@/lib/proPlanCopy";
+import { useDriverDashboardTheme } from "@/components/DriverDashboardTheme";
 
 type BillingStatus = {
   authenticated: boolean;
@@ -41,34 +36,8 @@ type Props = {
   userEmail: string | null;
   tier: "free" | "pro";
   quickNavs: DriverShortcut[];
-  onQuickNavsSaved: (navs: DriverShortcut[]) => void;
   onOpenAlertPreferences: () => void;
 };
-
-type DraftNavRow = {
-  id: string;
-  label: string;
-  latStr: string;
-  lngStr: string;
-};
-
-function quickNavsToDraft(rows: DriverShortcut[]): DraftNavRow[] {
-  return rows.map((n) => ({
-    id: n.id,
-    label: n.label,
-    latStr: String(n.lat),
-    lngStr: String(n.lng),
-  }));
-}
-
-function draftToShortcuts(rows: DraftNavRow[]): DriverShortcut[] {
-  return rows.map((r) => ({
-    id: r.id,
-    label: r.label.trim(),
-    lat: Number(r.latStr),
-    lng: Number(r.lngStr),
-  }));
-}
 
 export default function DriverAccountSheet({
   open,
@@ -77,22 +46,18 @@ export default function DriverAccountSheet({
   userEmail,
   tier: tierProp,
   quickNavs,
-  onQuickNavsSaved,
   onOpenAlertPreferences,
 }: Props) {
   const { data: session } = useSession();
-  const [draftNavs, setDraftNavs] = useState<DraftNavRow[]>([]);
-  const [navMessage, setNavMessage] = useState<string | null>(null);
+  const { theme, toggleTheme } = useDriverDashboardTheme();
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingMessage, setBillingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setDraftNavs(quickNavsToDraft(quickNavs));
-    setNavMessage(null);
     setBillingMessage(null);
-  }, [open, quickNavs]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -159,84 +124,8 @@ export default function DriverAccountSheet({
     }
   };
 
-  const saveQuickNavs = () => {
-    const nonEmpty = draftNavs.filter(
-      (r) =>
-        r.label.trim().length > 0 ||
-        r.latStr.trim().length > 0 ||
-        r.lngStr.trim().length > 0,
-    );
-    const asShortcuts = draftToShortcuts(nonEmpty);
-    const parsed = parseDriverQuickNavsJson(asShortcuts);
-    if (parsed === null) {
-      setNavMessage(
-        `Check each destination: label (1–${DRIVER_QUICK_NAV_LABEL_MAX} chars), valid latitude (−90–90) and longitude (−180–180). Max ${MAX_DRIVER_QUICK_NAVS} slots. Remove incomplete rows or fill every field.`,
-      );
-      return;
-    }
-    setNavMessage(null);
-    onQuickNavsSaved(parsed);
-  };
-
-  const addSlot = () => {
-    if (draftNavs.length >= MAX_DRIVER_QUICK_NAVS) return;
-    setDraftNavs((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        label: "",
-        latStr: "",
-        lngStr: "",
-      },
-    ]);
-  };
-
-  const removeSlot = (id: string) => {
-    setDraftNavs((prev) => prev.filter((n) => n.id !== id));
-  };
-
-  const updateDraftRow = (id: string, patch: Partial<DraftNavRow>) => {
-    setDraftNavs((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ...patch } : n)),
-    );
-  };
-
-  const fillLabelFromCoords = async (id: string, latStr: string, lngStr: string) => {
-    const lat = Number(latStr);
-    const lng = Number(lngStr);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    try {
-      const r = await fetch(
-        `/api/geo/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-      );
-      const data = (await r.json()) as { line?: string | null };
-      if (data.line)
-        updateDraftRow(id, {
-          label: data.line.slice(0, DRIVER_QUICK_NAV_LABEL_MAX),
-        });
-    } catch {
-      // ignore
-    }
-  };
-
-  const useMyLocation = (id: string) => {
-    if (!navigator.geolocation) {
-      setNavMessage("Location not available in this browser.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        updateDraftRow(id, { latStr: String(lat), lngStr: String(lng) });
-        setNavMessage(null);
-      },
-      () => setNavMessage("Could not read your location."),
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
-  };
-
   const fleetEnabled = billing?.authenticated && billing.organization?.id;
+  const filledSlots = quickNavs.filter((n) => n.label.trim().length > 0).length;
 
   if (!open) return null;
 
@@ -357,125 +246,44 @@ export default function DriverAccountSheet({
             </p>
           </div>
 
-          <div>
-            <h2 className="mb-2 font-display text-sm font-bold text-ink">
+          <div className="rounded-xl border border-ink/10 bg-ice/35 p-4">
+            <h2 className="mb-1 font-display text-sm font-bold text-ink">
               Quick destinations
             </h2>
-            <p className="mb-3 text-xs text-muted">
-              Add up to {MAX_DRIVER_QUICK_NAVS} places for one-tap navigation on
-              the map. No defaults — only what you save here appears.
+            <p className="text-xs text-muted">
+              {filledSlots > 0
+                ? `${filledSlots} saved destination${filledSlots === 1 ? "" : "s"} (max ${MAX_DRIVER_QUICK_NAVS}).`
+                : `No saved spots yet — add up to ${MAX_DRIVER_QUICK_NAVS} for one-tap navigation.`}
             </p>
-            <div className="space-y-3">
-              {draftNavs.map((n) => (
-                <div
-                  key={n.id}
-                  className="rounded-xl border border-ink/12 bg-paper p-3 shadow-sm"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-muted">
-                      Destination
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeSlot(n.id)}
-                      className="rounded-lg p-1.5 text-muted transition-colors hover:bg-red-500/10 hover:text-red-700"
-                      aria-label="Remove destination"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                  <label className="mb-2 block">
-                    <span className="mb-1 block text-[11px] text-muted">
-                      Label
-                    </span>
-                    <input
-                      type="text"
-                      value={n.label}
-                      maxLength={DRIVER_QUICK_NAV_LABEL_MAX}
-                      onChange={(e) =>
-                        updateDraftRow(n.id, { label: e.target.value })
-                      }
-                      placeholder="e.g. Home base"
-                      className="w-full rounded-lg border border-ink/15 bg-ice/40 px-2 py-2 text-sm text-ink"
-                    />
-                  </label>
-                  <div className="mb-2 grid grid-cols-2 gap-2">
-                    <label>
-                      <span className="mb-1 block text-[11px] text-muted">
-                        Lat
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={n.latStr}
-                        onChange={(e) =>
-                          updateDraftRow(n.id, { latStr: e.target.value })
-                        }
-                        className="w-full rounded-lg border border-ink/15 bg-ice/40 px-2 py-2 text-sm text-ink"
-                      />
-                    </label>
-                    <label>
-                      <span className="mb-1 block text-[11px] text-muted">
-                        Lng
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={n.lngStr}
-                        onChange={(e) =>
-                          updateDraftRow(n.id, { lngStr: e.target.value })
-                        }
-                        className="w-full rounded-lg border border-ink/15 bg-ice/40 px-2 py-2 text-sm text-ink"
-                      />
-                    </label>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => useMyLocation(n.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-ink/12 bg-white px-2 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ice"
-                    >
-                      <Crosshair className="size-3.5" />
-                      Use my location
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fillLabelFromCoords(n.id, n.latStr, n.lngStr)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-ink/12 bg-white px-2 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ice"
-                    >
-                      <Tag className="size-3.5" />
-                      Label from map point
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {draftNavs.length < MAX_DRIVER_QUICK_NAVS ? (
-              <button
-                type="button"
-                onClick={addSlot}
-                className="mt-3 w-full rounded-xl border border-dashed border-ink/20 py-3 text-sm font-semibold text-ink transition-colors hover:bg-ice"
-              >
-                + Add destination ({draftNavs.length}/{MAX_DRIVER_QUICK_NAVS})
-              </button>
-            ) : null}
-            {navMessage ? (
-              <p className="mt-2 text-xs text-amber-800">{navMessage}</p>
-            ) : null}
-            <button
-              type="button"
-              onClick={saveQuickNavs}
-              className="mt-3 w-full rounded-xl bg-sky py-3 text-sm font-semibold text-paper transition hover:bg-deep"
+            <Link
+              href="/dashboard/quick-nav"
+              onClick={onClose}
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-sky underline-offset-2 hover:underline"
             >
-              Save quick destinations
-            </button>
+              Manage destinations →
+            </Link>
           </div>
 
           <div className="border-t border-ink/10 pt-2">
             <p className="mb-2 font-display text-sm font-bold text-ink">
               App
             </p>
-            <nav className="divide-y divide-ink/10 rounded-xl border border-ink/10 overflow-hidden">
+            <nav className="divide-y divide-ink/10 overflow-hidden rounded-xl border border-ink/10">
+              <button
+                type="button"
+                onClick={() => toggleTheme()}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm font-semibold text-ink transition-colors hover:bg-ice"
+              >
+                <span className="flex items-center gap-2">
+                  {theme === "dark" ? (
+                    <Sun className="size-4 text-muted" strokeWidth={2} />
+                  ) : (
+                    <Moon className="size-4 text-muted" strokeWidth={2} />
+                  )}
+                  {theme === "dark" ? "Light mode" : "Dark mode"}
+                </span>
+                <ChevronRight className="size-4 text-muted" />
+              </button>
               {session?.user?.isAdmin ? (
                 <Link
                   href="/admin"
@@ -534,7 +342,7 @@ export default function DriverAccountSheet({
             <button
               type="button"
               onClick={() => void signOut({ callbackUrl: "/" })}
-              className="w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800 transition hover:bg-red-100"
+              className="w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-800 transition hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/55"
             >
               Sign out
             </button>

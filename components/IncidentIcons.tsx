@@ -3,7 +3,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Ambulance,
-  Car,
   CarFront,
   CircleQuestionMark,
   CloudSun,
@@ -54,8 +53,75 @@ function makeIcon(Icon: LucideIcon, color: string) {
   };
 }
 
+/** Lucide-shaped props — used inside FilterPanel gradient circles (`currentColor` = white). */
+export function CollisionGlyph({
+  className,
+  strokeWidth: _strokeWidth,
+  width,
+  height,
+}: {
+  className?: string;
+  strokeWidth?: number;
+  width?: number;
+  height?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      width={width}
+      height={height}
+      aria-hidden
+    >
+      <path
+        d="M3 15.5 L6.5 9.5 L11 9 L12.5 14 L11 17.5 H5 Z"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="6.8" cy="17.8" r="1.35" fill="currentColor" />
+      <circle cx="10.6" cy="17.8" r="1.35" fill="currentColor" />
+      <path
+        d="M21 8.5 L17.5 14.5 L13 15 L11.5 10 L13 6.5 H19 Z"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="17.2" cy="6.8" r="1.35" fill="currentColor" />
+      <circle cx="13.4" cy="6.8" r="1.35" fill="currentColor" />
+      <path
+        d="M11 11.5 L13 13.5 M13 11.5 L11 13.5"
+        stroke="currentColor"
+        strokeWidth="1.85"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="12.5" r="1.8" fill="currentColor" fillOpacity={0.95} />
+    </svg>
+  );
+}
+
+/** Two-car impact — matches map pin collision glyph style. */
+export function CollisionIcon({ size = 32, className = "" }: IconProps) {
+  const glyphPx = Math.round(size * 0.52);
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-full text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_1px_2px_rgba(0,0,0,0.14)] ${className}`}
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: "#E63946",
+      }}
+      aria-hidden
+    >
+      <CollisionGlyph width={glyphPx} height={glyphPx} className="shrink-0" />
+    </div>
+  );
+}
+
 export const AccidentIcon = makeIcon(CarFront, "#F38A1F");
-export const CollisionIcon = makeIcon(Car, "#22B86C");
 export const FireIcon = makeIcon(Flame, "#E63946");
 export const HazardIcon = makeIcon(TriangleAlert, "#F4C430");
 export const JamIcon = makeIcon(Route, "#8C4FCF");
@@ -69,7 +135,7 @@ export const OtherIcon = makeIcon(CircleQuestionMark, "#6B7280");
 export function getIconType(iconCategory: number): IncidentIconType {
   switch (iconCategory) {
     case 1:
-      return "accident";
+      return "collision";
     case 2:
     case 3:
     case 4:
@@ -123,7 +189,7 @@ export function getIconColor(type: IncidentIconType): string {
     case "accident":
       return "#F38A1F";
     case "collision":
-      return "#22B86C";
+      return "#E63946";
     case "fire":
       return "#E63946";
     case "hazard":

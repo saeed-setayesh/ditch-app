@@ -5,7 +5,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Ambulance,
-  Car,
   CarFront,
   CloudSun,
   Flame,
@@ -16,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import type { IncidentType } from "./IncidentIcons";
+import { CollisionGlyph } from "./IncidentIcons";
 
 export type { IncidentType };
 
@@ -32,14 +32,21 @@ type FilterPanelProps = {
   onFiltersChange: (filters: FilterState) => void;
 };
 
+/** Filter chip icons — collision uses the same two-car glyph as map/list (TomTom cat 1). */
+type IncidentFilterIcon = LucideIcon | typeof CollisionGlyph;
+
 const INCIDENT_TYPES: {
   id: IncidentType;
   label: string;
-  Icon: LucideIcon;
+  Icon: IncidentFilterIcon;
   color: string;
 }[] = [
   { id: "accident", label: "Accident", Icon: CarFront, color: "#F38A1F" },
-  { id: "collision", label: "Collision", Icon: Car, color: "#22B86C" },
+  /*
+   * Category 1 is shown if filters include accident OR collision (shared crash bucket).
+   * Turning both off hides those incidents; either chip alone shows them.
+   */
+  { id: "collision", label: "Collision", Icon: CollisionGlyph, color: "#E63946" },
   { id: "fire", label: "Fire", Icon: Flame, color: "#E63946" },
   { id: "hazard", label: "Hazard", Icon: TriangleAlert, color: "#F4C430" },
   { id: "jam", label: "Jam", Icon: Route, color: "#8C4FCF" },

@@ -33,6 +33,7 @@ model User {
   driverPresence DriverPresence?
   crowdPosts       CrowdPost[]
   rewardLedger     RewardLedgerEntry[]
+  vehicleInspections VehicleInspection[]
 
   @@map("users")
 }
@@ -179,6 +180,9 @@ model Organization {
   members      OrganizationMember[]
   subscription OrganizationSubscription?
   serviceArea    OrganizationServiceArea?
+  fleetVehicles           FleetVehicle[]
+  inspectionTemplates     InspectionTemplate[]
+  vehicleInspections      VehicleInspection[]
 
   @@map("organizations")
 }
@@ -261,4 +265,133 @@ model OrganizationServiceArea {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("organization_service_areas")
+}
+
+// ─── DVIR / vehicle inspections ─────────────────────────────────────
+
+model InspectionTemplate {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions     InspectionTemplateVersion[]
+
+  @@index([organizationId])
+  @@map("inspection_templates")
+}
+
+model InspectionTemplateVersion {
+  id              String   @id @default(cuid())
+  templateId      String
+  version         Int
+  /// Sections/items JSON — see lib/inspection/checklistSchema.ts
+  checklistSchema Json
+  createdAt       DateTime @default(now())
+
+  template                InspectionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  vehicleInspections      VehicleInspection[]
+  fleetVehiclesAsDefault  FleetVehicle[]       @relation("FleetVehicleDefaultTemplate")
+
+  @@unique([templateId, version])
+  @@index([templateId])
+  @@map("inspection_template_versions")
+}
+
+model FleetVehicle {
+  id                                  String    @id @default(cuid())
+  organizationId                      String
+  unitNumber                          String
+  /// truck | trailer | bus | other
+  vehicleType                         String    @default("truck")
+  plate                               String?
+  vin                                 String?
+  notes                               String?
+  active                              Boolean   @default(true)
+  metadata                            Json?
+  defaultInspectionTemplateVersionId  String?
+  createdAt                           DateTime  @default(now())
+  updatedAt                           DateTime  @updatedAt
+
+  organization               Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  defaultInspectionTemplateVersion InspectionTemplateVersion? @relation("FleetVehicleDefaultTemplate", fields: [defaultInspectionTemplateVersionId], references: [id], onDelete: SetNull)
+  inspections                VehicleInspection[]
+
+  @@unique([organizationId, unitNumber])
+  @@index([organizationId])
+  @@map("fleet_vehicles")
+}
+
+model VehicleInspection {
+  id                String    @id @default(cuid())
+  organizationId    String
+  fleetVehicleId    String
+  driverUserId      String
+  /// PRE_TRIP | POST_TRIP
+  kind              String
+  templateVersionId String
+  /// draft | finalized
+  status            String    @default("draft")
+  startedAt         DateTime  @default(now())
+  finalizedAt       DateTime?
+  odometerKm        Float?
+  lat               Float?
+  lng               Float?
+  locationLabel     String?
+  /// ok | defects | out_of_service — set when finalized
+  overallSeverity   String?
+
+  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fleetVehicle    FleetVehicle              @relation(fields: [fleetVehicleId], references: [id], onDelete: Cascade)
+  driver          User                      @relation(fields: [driverUserId], references: [id], onDelete: Cascade)
+  templateVersion InspectionTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  items           VehicleInspectionItem[]
+  attachments     InspectionAttachment[]
+
+  @@index([organizationId, finalizedAt])
+  @@index([fleetVehicleId, finalizedAt])
+  @@index([driverUserId, finalizedAt])
+  @@map("vehicle_inspections")
+}
+
+model VehicleInspectionItem {
+  id           String  @id @default(cuid())
+  inspectionId String
+  /// Stable id from checklist item definition (e.g. sec0-it2)
+  itemKey      String
+  sectionIndex Int
+  itemIndex    Int
+  /// ok | defect | na
+  result       String
+  /// minor | major | out_of_service
+  severity     String?
+  defectLabel  String?
+  notes        String?
+
+  inspection  VehicleInspection       @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  attachments InspectionAttachment[]
+
+  @@index([inspectionId])
+  @@map("vehicle_inspection_items")
+}
+
+model InspectionAttachment {
+  id           String   @id @default(cuid())
+  inspectionId String
+  itemId       String?
+  /// photo | signature
+  kind         String
+  storageKey   String
+  publicUrl    String?
+  contentType  String
+  createdAt    DateTime @default(now())
+
+  inspection VehicleInspection        @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  item       VehicleInspectionItem?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("inspection_attachments")
 }

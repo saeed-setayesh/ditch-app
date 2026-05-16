@@ -24,6 +24,14 @@ export async function GET() {
       stripeSubscriptionId: true,
       stripeSubscriptionStatus: true,
       createdAt: true,
+      organizationMember: {
+        select: {
+          organizationId: true,
+          role: true,
+          seatActive: true,
+          organization: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 

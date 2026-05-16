@@ -388,7 +388,8 @@ export default function CompanyDispatchPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-hidden">
             <IncidentList
-              incidents={queueFiltered}
+              incidentsFiltered={queueFiltered}
+              incidentsAll={queueFiltered}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onShowDetails={setDetailIncident}

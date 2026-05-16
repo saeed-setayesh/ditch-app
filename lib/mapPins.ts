@@ -19,7 +19,7 @@ type MapPinKind =
 function pinKindFromCategory(iconCategory: number): MapPinKind {
   switch (iconCategory) {
     case 1:
-      return "accident";
+      return "collision";
     case 2:
     case 3:
     case 4:
@@ -46,7 +46,7 @@ function pinColorForKind(type: MapPinKind): string {
     case "accident":
       return "#F38A1F";
     case "collision":
-      return "#22B86C";
+      return "#E63946";
     case "fire":
       return "#E63946";
     case "hazard":
@@ -68,10 +68,13 @@ function pinColorForKind(type: MapPinKind): string {
   }
 }
 
+/** Two simplified cars meeting at center — reads as collision / impact at pin size. */
+const COLLISION_GLYPH = `<g fill="none" stroke="#ffffff" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 15.5 L6 9.5 L11 9 L12.5 14 L11 17.5 H5 Z"/><circle cx="6.5" cy="17.5" r="1.35" fill="#ffffff" stroke="none"/><circle cx="10.5" cy="17.5" r="1.35" fill="#ffffff" stroke="none"/><path d="M21.5 8.5 L18 14.5 L13 15 L11.5 10 L13 6.5 H19 Z"/><circle cx="17.5" cy="6.5" r="1.35" fill="#ffffff" stroke="none"/><circle cx="13.5" cy="6.5" r="1.35" fill="#ffffff" stroke="none"/><path d="M11 11.5 L13 13.5 M13 11.5 L11 13.5" stroke-width="1.85"/><circle cx="12" cy="12.5" r="1.8" fill="#ffffff" stroke="none" opacity="0.95"/></g>`;
+
 /** 24×24 Lucide-style glyphs (white on colored pin); paths match lucide-react exports. */
 const GLYPHS: Record<MapPinKind, string> = {
   accident: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-2 2-1.5-3.7A2 2 0 0 0 15.646 5H8.4a2 2 0 0 0-1.903 1.257L5 10 3 8"/><path d="M7 14h.01"/><path d="M17 14h.01"/><rect width="18" height="8" x="3" y="10" rx="2"/><path d="M5 18v2"/><path d="M19 18v2"/></g>`,
-  collision: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></g>`,
+  collision: COLLISION_GLYPH,
   fire: `<path fill="#ffffff" d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/>`,
   hazard: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></g>`,
   jam: `<g fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></g>`,

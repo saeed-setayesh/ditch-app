@@ -25,20 +25,11 @@ export type IncidentForList = {
   startTime?: string | Date;
 };
 
-const INCIDENT_FILTER_OPTIONS: { value: string; label: string; categories: number[] }[] = [
-  { value: "all", label: "All", categories: [] },
-  { value: "1", label: "Accidents", categories: [1] },
-  { value: "8", label: "Road closed", categories: [8] },
-  { value: "14", label: "Broken down", categories: [14] },
-  { value: "6", label: "Jam", categories: [6] },
-  { value: "7", label: "Lane closed", categories: [7] },
-  { value: "9", label: "Road works", categories: [9] },
-  { value: "3", label: "Dangerous", categories: [3] },
-  { value: "other", label: "Other", categories: [0, 2, 4, 5, 10, 11] },
-];
-
 type IncidentListProps = {
-  incidents: IncidentForList[];
+  /** Map type + radius filtered (24h API window already applied). */
+  incidentsFiltered: IncidentForList[];
+  /** Full 24h list — not filtered by map type/radius (Active vs All tabs). */
+  incidentsAll: IncidentForList[];
   userLocation?: [number, number] | null;
   selectedId?: string | null;
   onSelect: (id: string) => void;
@@ -76,7 +67,7 @@ function IncidentCard({
   tier?: "free" | "pro";
 }) {
   const [relativeTime, setRelativeTime] = useState<string>("");
-  
+
   const iconType = getIconType(incident.iconCategory);
   const scoreColor =
     incident.towLabel === "High"
@@ -87,7 +78,6 @@ function IncidentCard({
 
   const shot = describeEtaShot(incident.etaMinutes, incident.confidence);
 
-  // Update relative time every minute
   useEffect(() => {
     const updateTime = () => {
       if (incident.createdAt || incident.startTime) {
@@ -95,10 +85,10 @@ function IncidentCard({
         setRelativeTime(getRelativeTime(timeToUse!));
       }
     };
-    
+
     updateTime();
-    const interval = setInterval(updateTime, 60000); // Update every minute
-    
+    const interval = setInterval(updateTime, 60000);
+
     return () => clearInterval(interval);
   }, [incident.createdAt, incident.startTime]);
 
@@ -200,7 +190,9 @@ function IncidentCard({
                   </span>
                 )}
               </div>
-              {shot != null && incident.etaMinutes != null && incident.etaMinutes >= 0 ? (
+              {shot != null &&
+              incident.etaMinutes != null &&
+              incident.etaMinutes >= 0 ? (
                 <span className="flex max-w-[11rem] flex-col items-end text-right leading-tight">
                   <span className="font-mono-brand font-semibold text-ink">
                     ~{incident.etaMinutes} min
@@ -274,21 +266,9 @@ function IncidentCard({
   );
 }
 
-function filterIncidents(
-  incidents: IncidentForList[],
-  filter: { value: string; categories: number[] }
-): IncidentForList[] {
-  if (filter.value === "all" || filter.categories.length === 0) return incidents;
-  if (filter.value === "other") {
-    const otherSet = new Set(filter.categories);
-    return incidents.filter((inc) => otherSet.has(inc.iconCategory));
-  }
-  const set = new Set(filter.categories);
-  return incidents.filter((inc) => set.has(inc.iconCategory));
-}
-
 export default function IncidentList({
-  incidents,
+  incidentsFiltered,
+  incidentsAll,
   userLocation,
   selectedId,
   onSelect,
@@ -299,16 +279,13 @@ export default function IncidentList({
   tier,
   loading,
 }: IncidentListProps) {
-  const typeFilter = INCIDENT_FILTER_OPTIONS[0];
   const [showActive, setShowActive] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const filtered = filterIncidents(incidents, typeFilter);
-  
-  // Filter incidents based on active/all toggle
-  const displayedIncidents = showActive 
-    ? filtered.filter(inc => inc.status !== "likely_cleared")
-    : filtered;
+  const activeRows = incidentsFiltered.filter(
+    (inc) => inc.status !== "likely_cleared",
+  );
+  const displayedIncidents = showActive ? activeRows : incidentsAll;
 
   useEffect(() => {
     if (!selectedId || !scrollAreaRef.current) return;
@@ -323,7 +300,12 @@ export default function IncidentList({
       row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, showActive, incidents.length]);
+  }, [
+    selectedId,
+    showActive,
+    incidentsFiltered.length,
+    incidentsAll.length,
+  ]);
 
   if (loading) {
     return (
@@ -331,24 +313,47 @@ export default function IncidentList({
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="mb-2 h-20 animate-pulse rounded-lg bg-white/45"
+            className="mb-2 h-20 animate-pulse rounded-lg bg-white/45 dark:bg-white/10"
           />
         ))}
       </div>
     );
   }
 
+  let emptyTitle = "";
+  let emptySubtitle = "";
+  if (displayedIncidents.length === 0) {
+    if (showActive) {
+      if (incidentsFiltered.length === 0) {
+        emptyTitle = "Nothing matches your filters";
+        emptySubtitle = "Adjust incident types or radius on the map.";
+      } else {
+        emptyTitle = "No active incidents in this view";
+        emptySubtitle = "Try the All tab for cleared items.";
+      }
+    } else {
+      emptyTitle =
+        incidentsAll.length === 0
+          ? "No incidents right now"
+          : "Nothing to show";
+      emptySubtitle =
+        incidentsAll.length === 0
+          ? "Traffic is clear in the last 24 hours."
+          : "";
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent">
       <div className="shrink-0 px-3 pb-2 pt-1">
-        <div className="grid grid-cols-2 gap-0 rounded-[14px] bg-ice/90 p-1">
+        <div className="grid grid-cols-2 gap-0 rounded-[14px] bg-ice/90 p-1 dark:bg-[var(--brand-ice)]/80">
           <button
             type="button"
             onClick={() => setShowActive(true)}
             className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-colors ${
               showActive
-                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-                : "text-muted hover:bg-white/70 hover:text-ink"
+                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)] dark:bg-[var(--brand-paper)]"
+                : "text-muted hover:bg-white/70 hover:text-ink dark:hover:bg-[var(--brand-paper)]/40"
             }`}
           >
             Active
@@ -358,8 +363,8 @@ export default function IncidentList({
             onClick={() => setShowActive(false)}
             className={`rounded-[10px] py-2 text-center text-sm font-semibold transition-colors ${
               !showActive
-                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-                : "text-muted hover:bg-white/70 hover:text-ink"
+                ? "bg-white text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)] dark:bg-[var(--brand-paper)]"
+                : "text-muted hover:bg-white/70 hover:text-ink dark:hover:bg-[var(--brand-paper)]/40"
             }`}
           >
             All
@@ -372,16 +377,10 @@ export default function IncidentList({
       >
         {displayedIncidents.length === 0 ? (
           <div className="p-6 text-center text-muted">
-            <p className="text-lg text-ink">
-              {incidents.length === 0
-                ? "No incidents right now"
-                : `No ${typeFilter.label.toLowerCase()} incidents`}
-            </p>
-            <p className="mt-1 text-sm">
-              {incidents.length === 0
-                ? "Traffic is clear."
-                : "Try another filter or period."}
-            </p>
+            <p className="text-lg text-ink">{emptyTitle}</p>
+            {emptySubtitle ? (
+              <p className="mt-1 text-sm">{emptySubtitle}</p>
+            ) : null}
           </div>
         ) : (
           <div>

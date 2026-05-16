@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode for scoped dashboard UI (see DriverDashboardThemeProvider). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* Brand — TYPE & COLOR reference */
   --brand-sky: #3fa7e6;
@@ -20,7 +23,7 @@
 
   /* Incident pins (KIND alignment with ditchappmobile) */
   --pin-accident: #f38a1f;
-  --pin-collision: #22b86c;
+  --pin-collision: #e63946;
   --pin-fire: #e63946;
   --pin-hazard: #f4c430;
   --pin-jam: #8c4fcf;
@@ -98,6 +101,19 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Driver dashboard only — map stays default; panels/chrome follow these tokens in `.dark`. */
+.dashboard-scope.dark {
+  --brand-paper: var(--dark-surface);
+  --brand-ice: #0c2844;
+  --brand-ink: #e8f4fc;
+  --muted: rgba(232, 244, 252, 0.62);
+  --muted-strong: rgba(232, 244, 252, 0.45);
+  --border: var(--dark-line);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --background: var(--dark-bg);
+  --foreground: rgba(232, 244, 252, 0.96);
 }
 
 .font-display {

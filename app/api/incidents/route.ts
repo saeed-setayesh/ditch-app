@@ -189,12 +189,20 @@ export async function GET(request: NextRequest) {
         ? withScores.filter((i) => i.towScore >= minScore)
         : withScores;
 
+    const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - TWENTY_FOUR_H_MS;
+    const recentWindow = filtered.filter((inc) => {
+      const t = inc.lastReportTime ?? inc.startTime;
+      if (!t) return true;
+      return new Date(t).getTime() >= cutoff;
+    });
+
     // Sort by newest first (lastReportTime or startTime), then by towScore
     const getIncidentTime = (inc: IncidentWithScore): number => {
       const t = inc.lastReportTime ?? inc.startTime;
       return t ? new Date(t).getTime() : 0;
     };
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...recentWindow].sort((a, b) => {
       const timeA = getIncidentTime(a);
       const timeB = getIncidentTime(b);
       if (timeB !== timeA) return timeB - timeA; // newest first
