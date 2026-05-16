@@ -10,40 +10,73 @@ import { prisma } from "@/lib/db";
 import { resolveEffectiveTier } from "@/lib/billing/effectiveTier";
 import {
   loadPlatformSettingsMap,
+  PLATFORM_KEYS,
+  settingTruthy,
 } from "@/lib/platformSettings";
-import {
-  resolveAppleOAuthCredentials,
-  resolveGoogleOAuth,
-  resolveMicrosoftOAuth,
-} from "@/lib/oauthCredentialResolution";
+import { createAppleClientSecretCached } from "@/lib/appleClientSecret";
 
 async function buildOAuthProviders() {
   const map = await loadPlatformSettingsMap();
   const list: NextAuthConfig["providers"] = [];
 
-  const google = resolveGoogleOAuth(map);
-  if (google.active && google.clientId && google.clientSecret) {
-    list.push(Google({ clientId: google.clientId, clientSecret: google.clientSecret }));
+  if (settingTruthy(map.get(PLATFORM_KEYS.OAUTH_GOOGLE_ENABLED))) {
+    const clientId = map.get(PLATFORM_KEYS.OAUTH_GOOGLE_CLIENT_ID)?.trim();
+    const clientSecret = map
+      .get(PLATFORM_KEYS.OAUTH_GOOGLE_CLIENT_SECRET)
+      ?.trim();
+    if (clientId && clientSecret) {
+      list.push(Google({ clientId, clientSecret }));
+    }
   }
 
-  const apple = await resolveAppleOAuthCredentials(map);
-  if (apple) {
-    list.push(Apple({ clientId: apple.clientId, clientSecret: apple.clientSecret }));
+  if (settingTruthy(map.get(PLATFORM_KEYS.OAUTH_APPLE_ENABLED))) {
+    const clientId = map.get(PLATFORM_KEYS.OAUTH_APPLE_CLIENT_ID)?.trim();
+    let clientSecret = map
+      .get(PLATFORM_KEYS.OAUTH_APPLE_CLIENT_SECRET)
+      ?.trim();
+    const teamId = map.get(PLATFORM_KEYS.OAUTH_APPLE_TEAM_ID)?.trim();
+    const keyId = map.get(PLATFORM_KEYS.OAUTH_APPLE_KEY_ID)?.trim();
+    const privateKey = map.get(PLATFORM_KEYS.OAUTH_APPLE_PRIVATE_KEY)?.trim();
+    if (!clientSecret && teamId && keyId && clientId && privateKey) {
+      try {
+        clientSecret = await createAppleClientSecretCached({
+          teamId,
+          keyId,
+          clientId,
+          privateKeyPem: privateKey,
+        });
+      } catch (e) {
+        console.error("Apple client secret generation failed:", e);
+      }
+    }
+    if (clientId && clientSecret) {
+      list.push(Apple({ clientId, clientSecret }));
+    }
   }
 
-  const microsoft = resolveMicrosoftOAuth(map);
-  if (
-    microsoft.active &&
-    microsoft.clientId &&
-    microsoft.clientSecret
-  ) {
-    list.push(
-      MicrosoftEntraID({
-        clientId: microsoft.clientId,
-        clientSecret: microsoft.clientSecret,
-        issuer: microsoft.issuer,
-      }),
-    );
+  if (settingTruthy(map.get(PLATFORM_KEYS.OAUTH_MICROSOFT_ENABLED))) {
+    const clientId = map
+      .get(PLATFORM_KEYS.OAUTH_MICROSOFT_CLIENT_ID)
+      ?.trim();
+    const clientSecret = map
+      .get(PLATFORM_KEYS.OAUTH_MICROSOFT_CLIENT_SECRET)
+      ?.trim();
+    const issuerRaw = map
+      .get(PLATFORM_KEYS.OAUTH_MICROSOFT_ISSUER)
+      ?.trim();
+    const issuer =
+      issuerRaw && issuerRaw.length > 0
+        ? issuerRaw
+        : "https://login.microsoftonline.com/common/v2.0/";
+    if (clientId && clientSecret) {
+      list.push(
+        MicrosoftEntraID({
+          clientId,
+          clientSecret,
+          issuer,
+        }),
+      );
+    }
   }
 
   return list;

@@ -35,23 +35,13 @@ Or, if you created the DB and migration manually:
 npx prisma migrate deploy
 ```
 
-### Production builds (Railway, Docker, CI)
+### Production build / CI
 
-`npm run build` runs **`prisma generate`** and **`next build`** only (no DB required during the image build in most setups).
+`npm run build` runs **`prisma migrate deploy`**, **`prisma generate`**, and **`next build`** when `prisma/schema.prisma` exists. Your build environment needs **`DATABASE_URL`** so migrations can run.
 
-**Migrations run automatically when the app boots:** `npm start` runs **`prisma migrate deploy`** first (needs **`DATABASE_URL`** at runtime), then **`next start`**.
+`npm start` runs **`next start`** only.
 
-You can still run migrations manually:
-
-```bash
-npx prisma migrate deploy
-```
-
-If your **build** environment can reach Postgres and you want migrations inside the build step too, use:
-
-```bash
-npm run build:with-migrate
-```
+If the builder cannot reach Postgres, run **`npx prisma migrate deploy`** from a release phase or a host that has DB access, then use a build that skips migrate (custom script), or split migrate into your platform’s deploy hooks.
 
 ### 3. PWA icons (optional)
 
@@ -65,10 +55,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). For push and geolocation, use HTTPS in production (or `npm run dev -- --experimental-https` locally).
-
-### Production / CI build
-
-`npm run build` runs **`prisma migrate deploy`**, then **`prisma generate`**, then **`next build`**. Set **`DATABASE_URL`** to a reachable database so migrations can apply. If you need to compile without a database, run **`next build`** directly.
 
 ## Cron (nearby push alerts + heatmap data)
 

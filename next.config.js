@@ -58,10 +58,6 @@ const nextConfig = {
     // Disable TypeScript type errors during build
     ignoreBuildErrors: true,
   },
-  eslint: {
-    // Skip ESLint during `next build`
-    ignoreDuringBuilds: true,
-  },
   // Provide an explicit turbopack root to avoid workspace root inference warnings
   turbopack: {
     root: __dirname,
