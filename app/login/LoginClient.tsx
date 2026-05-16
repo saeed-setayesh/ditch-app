@@ -8,10 +8,17 @@ import AppLogoMark from "@/components/brand/AppLogoMark";
 
 type Portal = "driver" | "company";
 
+type OauthConfig = {
+  google: boolean;
+  apple: boolean;
+  microsoftEntraId: boolean;
+};
+
 export default function LoginClient() {
   const router = useRouter();
   const [explicitCallback, setExplicitCallback] = useState<string | null>(null);
   const [portal, setPortal] = useState<Portal>("driver");
+  const [oauthCfg, setOauthCfg] = useState<OauthConfig | null>(null);
 
   useEffect(() => {
     try {
@@ -23,19 +30,28 @@ export default function LoginClient() {
     }
   }, []);
 
+  useEffect(() => {
+    fetch("/api/public/oauth-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j === "object") setOauthCfg(j as OauthConfig);
+      })
+      .catch(() => {});
+  }, []);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const destination =
+    explicitCallback ??
+    (portal === "company" ? "/company/dashboard" : "/dashboard");
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    const destination =
-      explicitCallback ??
-      (portal === "company" ? "/company/dashboard" : "/dashboard");
 
     try {
       const result = await signIn("credentials", {
@@ -61,6 +77,21 @@ export default function LoginClient() {
       setLoading(false);
     }
   }
+
+  async function handleOAuth(providerId: string) {
+    setError(null);
+    setLoading(true);
+    try {
+      await signIn(providerId, { callbackUrl: destination });
+    } catch {
+      setError("Could not start social sign-in.");
+      setLoading(false);
+    }
+  }
+
+  const anyOAuth =
+    oauthCfg &&
+    (oauthCfg.google || oauthCfg.apple || oauthCfg.microsoftEntraId);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-ice px-4 py-8 safe-area-inset">
@@ -113,6 +144,52 @@ export default function LoginClient() {
             {error}
           </div>
         )}
+
+        {anyOAuth ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-center text-xs font-semibold uppercase tracking-wide text-muted">
+              Continue with
+            </p>
+            {oauthCfg!.google ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void handleOAuth("google")}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-ink/15 bg-white font-semibold text-ink shadow-sm transition hover:bg-ice disabled:opacity-50"
+              >
+                Google
+              </button>
+            ) : null}
+            {oauthCfg!.apple ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void handleOAuth("apple")}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-ink/15 bg-ink font-semibold text-paper shadow-sm transition hover:bg-ink/90 disabled:opacity-50"
+              >
+                Apple
+              </button>
+            ) : null}
+            {oauthCfg!.microsoftEntraId ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void handleOAuth("microsoft-entra-id")}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-ink/15 bg-white font-semibold text-ink shadow-sm transition hover:bg-ice disabled:opacity-50"
+              >
+                Microsoft
+              </button>
+            ) : null}
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-ink/15" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-ice px-2 text-muted">Or email</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">

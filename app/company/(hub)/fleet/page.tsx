@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Truck, Radio, Wrench, Plus, Pencil, Trash2 } from "lucide-react";
 
 type TemplateVersionOption = {
@@ -21,6 +23,9 @@ type FleetVehicleRow = {
 };
 
 export default function CompanyFleetPage() {
+  const { data: session } = useSession();
+  const canManageFleet = session?.user?.orgRole === "admin";
+
   const [vehicles, setVehicles] = useState<FleetVehicleRow[]>([]);
   const [versions, setVersions] = useState<TemplateVersionOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,9 +109,15 @@ export default function CompanyFleetPage() {
   }
 
   async function saveVehicle() {
+    if (!canManageFleet) return;
     setError(null);
+    const unit = formUnit.trim();
+    if (!unit) {
+      setError("Unit number is required.");
+      return;
+    }
     const payload = {
-      unitNumber: formUnit.trim(),
+      unitNumber: unit,
       vehicleType: formType.trim(),
       plate: formPlate.trim() || null,
       vin: formVin.trim() || null,
@@ -121,14 +132,28 @@ export default function CompanyFleetPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error((await res.json()).error ?? "Save failed");
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          let msg = body.error ?? "Save failed";
+          if (msg === "Admin only") {
+            msg = "Only organization admins can change fleet vehicles.";
+          }
+          throw new Error(msg);
+        }
       } else {
         const res = await fetch("/api/org/fleet-vehicles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error((await res.json()).error ?? "Create failed");
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          let msg = body.error ?? "Create failed";
+          if (msg === "Admin only") {
+            msg = "Only organization admins can add fleet vehicles.";
+          }
+          throw new Error(msg);
+        }
       }
       resetForm();
       await load();
@@ -138,13 +163,21 @@ export default function CompanyFleetPage() {
   }
 
   async function deleteVehicle(id: string) {
+    if (!canManageFleet) return;
     if (!confirm("Remove this vehicle from the fleet?")) return;
     setError(null);
     try {
       const res = await fetch(`/api/org/fleet-vehicles/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error((await res.json()).error ?? "Delete failed");
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        let msg = body.error ?? "Delete failed";
+        if (msg === "Admin only") {
+          msg = "Only organization admins can remove fleet vehicles.";
+        }
+        throw new Error(msg);
+      }
       resetForm();
       await load();
     } catch (e: unknown) {
@@ -173,6 +206,27 @@ export default function CompanyFleetPage() {
       </div>
 
       <div className="p-4 md:p-6">
+        {!canManageFleet && (
+          <div className="mb-4 rounded-xl border border-ink/10 bg-paper px-4 py-3 text-sm text-muted shadow-sm">
+            Fleet changes are limited to{" "}
+            <span className="font-semibold text-ink">organization admins</span>.
+            Ask an admin to add vehicles, or open the{" "}
+            <Link href="/dashboard/inspections/new" className="font-semibold text-sky underline">
+              driver inspection
+            </Link>{" "}
+            flow when vehicles are available.
+          </div>
+        )}
+        {canManageFleet && !loading && versions.length === 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-100">
+            No custom checklist templates yet. The first driver inspection will create a{" "}
+            <span className="font-semibold">starter checklist</span> automatically; customize anytime under{" "}
+            <Link href="/company/inspection-templates" className="font-semibold underline">
+              Inspection templates
+            </Link>
+            .
+          </div>
+        )}
         {error && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             {error}
@@ -213,21 +267,23 @@ export default function CompanyFleetPage() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              resetForm();
-              setCreating(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-xl bg-sky px-4 py-2.5 text-sm font-semibold text-paper shadow-sm transition hover:bg-deep"
-          >
-            <Plus className="size-4" />
-            Add vehicle
-          </button>
-        </div>
+        {canManageFleet ? (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setCreating(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-sky px-4 py-2.5 text-sm font-semibold text-paper shadow-sm transition hover:bg-deep"
+            >
+              <Plus className="size-4" />
+              Add vehicle
+            </button>
+          </div>
+        ) : null}
 
-        {(creating || editing) && (
+        {(creating || editing) && canManageFleet && (
           <div className="mb-6 rounded-xl border border-ink/10 bg-paper p-4 shadow-sm">
             <h2 className="font-display text-lg font-bold text-ink">
               {editing ? "Edit vehicle" : "New vehicle"}
@@ -371,24 +427,28 @@ export default function CompanyFleetPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(row)}
-                          className="rounded-lg border border-ink/12 p-2 text-ink hover:bg-ice"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void deleteVehicle(row.id)}
-                          className="rounded-lg border border-ink/12 p-2 text-red-700 hover:bg-red-50"
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
+                      {canManageFleet ? (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(row)}
+                            className="rounded-lg border border-ink/12 p-2 text-ink hover:bg-ice"
+                            aria-label="Edit"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteVehicle(row.id)}
+                            className="rounded-lg border border-ink/12 p-2 text-red-700 hover:bg-red-50"
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted">View only</span>
+                      )}
                     </td>
                   </tr>
                 ))

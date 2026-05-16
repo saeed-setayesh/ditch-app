@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { getActiveOrgMember } from "@/lib/orgInspectionAuth";
 import { resolveTemplateVersionForVehicle } from "@/lib/inspection/templateResolution";
+import { ensureDefaultInspectionTemplate } from "@/lib/inspection/defaultOrgInspectionTemplate";
 import { isChecklistSchemaV1 } from "@/lib/inspection/checklistSchema";
 
 export const dynamic = "force-dynamic";
@@ -89,16 +90,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
   }
 
-  const resolved = await resolveTemplateVersionForVehicle({
+  let resolved = await resolveTemplateVersionForVehicle({
     organizationId: member.organizationId,
     fleetVehicleId,
   });
 
   if (!resolved) {
+    const seeded = await ensureDefaultInspectionTemplate(member.organizationId);
+    if (seeded) {
+      resolved = seeded;
+    }
+  }
+
+  if (!resolved) {
     return NextResponse.json(
       {
         error:
-          "No inspection template configured. Create a template (company hub) or assign a default template version to this vehicle.",
+          "No inspection template configured. Create a template in Company hub → Inspection templates, or assign a default checklist version on each vehicle.",
       },
       { status: 400 },
     );

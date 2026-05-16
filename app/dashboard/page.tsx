@@ -392,6 +392,7 @@ export default function Home() {
             setHeatmapBlocked(true);
           }}
           showTrafficFlow={filters.showTrafficFlow}
+          colorScheme={theme === "dark" ? "dark" : "light"}
         />
       </div>
 

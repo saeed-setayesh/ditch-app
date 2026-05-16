@@ -10,8 +10,9 @@ const PUBLIC_PATHS = [
 ];
 
 const PUBLIC_PREFIXES = [
-  "/api/auth/",       // Auth.js sub-routes
-  "/_next/",          // Next.js internals
+  "/api/auth/", // Auth.js sub-routes
+  "/api/public/", // Public config (OAuth toggles, etc.)
+  "/_next/", // Next.js internals
 ];
 
 const PUBLIC_FILES = [

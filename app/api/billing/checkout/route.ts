@@ -7,8 +7,8 @@ import {
   stripeConfigured,
 } from "@/lib/stripe";
 import {
-  getResolvedPriceOrgSeatMonthly,
-  getResolvedPriceProMonthly,
+  resolveOrgSeatSubscriptionLineItem,
+  resolveProSubscriptionLineItem,
 } from "@/lib/platformSettings";
 
 export const dynamic = "force-dynamic";
@@ -67,16 +67,20 @@ export async function POST(request: NextRequest) {
 
   try {
     if (mode === "pro") {
-      const price = await getResolvedPriceProMonthly();
-      if (!price) {
+      const line = await resolveProSubscriptionLineItem();
+      if (!line) {
         return NextResponse.json(
           {
             error:
-              "Missing STRIPE_PRICE_PRO_MONTHLY (or STRIPE_PRICE_PRO) env var or admin platform setting.",
+              "Pro billing is not configured: set a Stripe Price ID or monthly amount in Admin → Platform settings.",
           },
           { status: 503 },
         );
       }
+      const lineItem =
+        line.mode === "price"
+          ? { price: line.price, quantity: 1 }
+          : { price_data: line.price_data, quantity: 1 };
       const checkout = await stripe.checkout.sessions.create({
         mode: "subscription",
         customer: user.stripeCustomerId ?? undefined,
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
             kind: "b2c_pro",
           },
         },
-        line_items: [{ price, quantity: 1 }],
+        line_items: [lineItem],
         success_url: `${successUrl}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: cancelUrl,
         allow_promotion_codes: true,
@@ -129,16 +133,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const priceSeat = await getResolvedPriceOrgSeatMonthly();
-      if (!priceSeat) {
+      const seatLine = await resolveOrgSeatSubscriptionLineItem();
+      if (!seatLine) {
         return NextResponse.json(
           {
             error:
-              "Missing STRIPE_PRICE_ORG_SEAT_MONTHLY (or STRIPE_PRICE_SEAT) env var or admin platform setting.",
+              "Fleet seat billing is not configured: set a Stripe Price ID or monthly amount per seat in Admin → Platform settings.",
           },
           { status: 503 },
         );
       }
+      const seatLineItem =
+        seatLine.mode === "price"
+          ? { price: seatLine.price, quantity: seatQty }
+          : { price_data: seatLine.price_data, quantity: seatQty };
 
       let customerId = member.organization.stripeCustomerId;
       if (!customerId) {
@@ -170,7 +178,7 @@ export async function POST(request: NextRequest) {
             organizationId,
           },
         },
-        line_items: [{ price: priceSeat, quantity: seatQty }],
+        line_items: [seatLineItem],
         success_url: `${successUrl}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: cancelUrl,
       });

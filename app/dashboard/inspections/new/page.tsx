@@ -21,15 +21,21 @@ export default function NewInspectionPage() {
   const [kind, setKind] = useState<"PRE_TRIP" | "POST_TRIP">("PRE_TRIP");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
 
   const load = useCallback(async () => {
+    setVehiclesLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/org/fleet-vehicles");
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to load fleet");
-      const json = (await res.json()) as { vehicles: VehicleOpt[] };
-      setVehicles(json.vehicles.filter((v) => v.active));
+      const json = (await res.json()) as { vehicles?: VehicleOpt[]; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Failed to load fleet");
+      setVehicles((json.vehicles ?? []).filter((v) => v.active));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load");
+      setVehicles([]);
+    } finally {
+      setVehiclesLoading(false);
     }
   }, []);
 
@@ -99,9 +105,12 @@ export default function NewInspectionPage() {
           <select
             value={vehicleId}
             onChange={(e) => setVehicleId(e.target.value)}
-            className="mt-2 w-full rounded-xl border border-ink/15 bg-paper px-4 py-3 text-base text-ink"
+            disabled={vehiclesLoading}
+            className="mt-2 w-full rounded-xl border border-ink/15 bg-paper px-4 py-3 text-base text-ink disabled:opacity-60"
           >
-            <option value="">Select unit…</option>
+            <option value="">
+              {vehiclesLoading ? "Loading fleet…" : "Select unit…"}
+            </option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.unitNumber} ({v.vehicleType})
@@ -109,6 +118,17 @@ export default function NewInspectionPage() {
             ))}
           </select>
         </label>
+
+        {!vehiclesLoading && !error && vehicles.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-ink/10 bg-paper px-4 py-3 text-sm text-muted">
+            No active vehicles are available yet. Ask a fleet{" "}
+            <span className="font-semibold text-ink">organization admin</span> to add units in{" "}
+            <Link href="/company/fleet" className="font-semibold text-sky underline">
+              Company hub → Fleet
+            </Link>
+            .
+          </p>
+        ) : null}
 
         <div className="mt-6 flex gap-3">
           {(["PRE_TRIP", "POST_TRIP"] as const).map((k) => (
@@ -129,7 +149,7 @@ export default function NewInspectionPage() {
 
         <button
           type="button"
-          disabled={busy || !vehicleId}
+          disabled={busy || !vehicleId || vehiclesLoading || vehicles.length === 0}
           onClick={() => void start()}
           className="mt-8 w-full rounded-xl bg-sky py-4 text-base font-bold text-paper shadow-sm hover:bg-deep disabled:opacity-40"
         >

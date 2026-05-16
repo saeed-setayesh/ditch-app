@@ -18,6 +18,8 @@ export type IncidentForMap = {
   to?: string;
 };
 
+export type MapColorScheme = "light" | "dark";
+
 type MapProps = {
   incidents: IncidentForMap[];
   userLocation?: [number, number] | null;
@@ -30,6 +32,8 @@ type MapProps = {
   heatmapSource?: "platform" | "live";
   onHeatmapBlocked?: () => void;
   showTrafficFlow?: boolean;
+  /** TomTom base map palette; driver dashboard passes theme here. */
+  colorScheme?: MapColorScheme;
 };
 
 type TomTomMap = {
@@ -40,6 +44,24 @@ type TomTomMarker = { remove: () => void };
 
 const HEATMAP_SOURCE_ID = "heatmap-incidents-source";
 const HEATMAP_LAYER_ID = "heatmap-incidents-layer";
+
+/** TomTom merged style (see Map Display API — merged style method). */
+function mergedTomTomStyle(scheme: MapColorScheme) {
+  if (scheme === "dark") {
+    return {
+      map: "basic_night",
+      poi: "poi_main",
+      trafficIncidents: "incidents_night",
+      trafficFlow: "flow_relative0-dark",
+    };
+  }
+  return {
+    map: "basic_main",
+    poi: "poi_main",
+    trafficIncidents: "incidents_day",
+    trafficFlow: "flow_relative0",
+  };
+}
 
 export default function Map({
   incidents,
@@ -53,9 +75,12 @@ export default function Map({
   heatmapSource = "platform",
   onHeatmapBlocked,
   showTrafficFlow = false,
+  colorScheme = "light",
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<TomTomMap | null>(null);
+  const colorSchemeRef = useRef(colorScheme);
+  colorSchemeRef.current = colorScheme;
   const ttRef = useRef<
     typeof import("@tomtom-international/web-sdk-maps") | null
   >(null);
@@ -72,6 +97,8 @@ export default function Map({
   );
   const heatmapAddedRef = useRef(false);
   const [heatmapEmpty, setHeatmapEmpty] = useState(false);
+  const [mapStyleEpoch, setMapStyleEpoch] = useState(0);
+  const prevColorSchemeRef = useRef<MapColorScheme | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -98,11 +125,13 @@ export default function Map({
       ttRef.current = tt;
 
       const city = getCityById(heatmapCityId);
+      const scheme = colorSchemeRef.current;
       const map = tt.map({
         key,
         container: containerEl,
         center: (city?.center as [number, number]) ?? [-79.3832, 43.6532],
         zoom: 11,
+        style: mergedTomTomStyle(scheme),
         stylesVisibility: {
           trafficFlow: showTrafficFlow,
           trafficIncidents: false,
@@ -167,6 +196,29 @@ export default function Map({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- single TomTom mount; flyTo + effects handle city/traffic prefs
   }, []);
+
+  // Swap TomTom merged style when dashboard light/dark theme changes (heatmap layers are cleared — epoch bumps below).
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    if (prevColorSchemeRef.current === null) {
+      prevColorSchemeRef.current = colorScheme;
+      return;
+    }
+    if (prevColorSchemeRef.current === colorScheme) return;
+    prevColorSchemeRef.current = colorScheme;
+    const map = mapRef.current as TomTomMap & {
+      setStyle?: (style: ReturnType<typeof mergedTomTomStyle>) => void;
+      once?: (ev: string, fn: () => void) => void;
+    };
+    try {
+      map.setStyle?.(mergedTomTomStyle(colorScheme));
+      map.once?.("load", () => {
+        setMapStyleEpoch((e) => e + 1);
+      });
+    } catch (e) {
+      console.warn("Map style update failed:", e);
+    }
+  }, [ready, colorScheme]);
 
   useEffect(() => {
     if (!ready || !mapRef.current || !ttRef.current) return;
@@ -291,7 +343,7 @@ export default function Map({
     } catch (e) {
       console.warn("Traffic flow toggle failed:", e);
     }
-  }, [ready, showTrafficFlow]);
+  }, [ready, showTrafficFlow, mapStyleEpoch]);
 
   useEffect(() => {
     if (!ready || !mapRef.current) return;
@@ -435,11 +487,12 @@ export default function Map({
     heatmapDeviceId,
     heatmapSource,
     onHeatmapBlocked,
+    mapStyleEpoch,
   ]);
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-xl bg-[#071a2e]"
+      className={`relative w-full overflow-hidden rounded-xl ${colorScheme === "dark" ? "bg-[#0a0f18]" : "bg-[#071a2e]"}`}
       style={{ height: "100%", minHeight: 200 }}
     >
       {!ready && (

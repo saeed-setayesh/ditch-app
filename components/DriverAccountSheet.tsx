@@ -12,10 +12,6 @@ import {
   Sun,
 } from "lucide-react";
 import { type DriverShortcut, MAX_DRIVER_QUICK_NAVS } from "@/lib/driverShortcuts";
-import {
-  PRO_BENEFITS_HEADLINE,
-  getProBenefitBullets,
-} from "@/lib/proPlanCopy";
 import { useDriverDashboardTheme } from "@/components/DriverDashboardTheme";
 
 type BillingStatus = {
@@ -129,8 +125,6 @@ export default function DriverAccountSheet({
 
   if (!open) return null;
 
-  const bullets = getProBenefitBullets();
-
   return (
     <div className="fixed inset-0 z-[48] flex justify-start bg-black/40 md:bg-black/35">
       <button
@@ -185,37 +179,41 @@ export default function DriverAccountSheet({
             <p className="text-sm font-semibold text-ink">
               Plan · {planTier === "pro" ? "Pro" : "Free"}
             </p>
-            <p className="mt-2 text-xs font-semibold text-ink">
-              {PRO_BENEFITS_HEADLINE}
-            </p>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted">
-              {bullets.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
             {billingMessage ? (
               <p className="mt-2 text-xs text-red-600">{billingMessage}</p>
             ) : null}
+            {planTier !== "pro" && billing?.authenticated ? (
+              <div className="relative mt-4 overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/10 dark:ring-white/15">
+                <div
+                  className="absolute inset-0 bg-gradient-to-br from-sky-500 via-indigo-600 to-violet-950 opacity-95 dark:from-sky-400 dark:via-indigo-700 dark:to-slate-950"
+                  aria-hidden
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.35),_transparent_55%)] opacity-90 dark:opacity-40" />
+                <div className="relative flex flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <p className="font-display text-3xl font-black tracking-tight text-white drop-shadow-sm">
+                    Get Pro
+                  </p>
+                  <button
+                    type="button"
+                    disabled={billingBusy}
+                    onClick={() => void startProCheckout()}
+                    className="shrink-0 rounded-xl bg-white px-5 py-3 text-sm font-bold text-indigo-900 shadow-md transition hover:bg-white/95 disabled:opacity-50 dark:bg-white dark:text-slate-900"
+                  >
+                    Get Pro
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {!billing?.authenticated ? (
-              <p className="mt-2 text-xs text-muted">
+              <p className="mt-3 text-xs text-muted">
                 Sign in to subscribe to Pro individually. Fleet billing:{" "}
                 <Link href="/company" className="font-medium text-sky underline">
                   Fleet
                 </Link>
                 .
               </p>
-            ) : (
+            ) : planTier === "pro" ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {planTier !== "pro" && (
-                  <button
-                    type="button"
-                    disabled={billingBusy}
-                    onClick={() => void startProCheckout()}
-                    className="rounded-lg bg-sky px-3 py-2 text-sm font-semibold text-paper transition hover:bg-deep disabled:opacity-50"
-                  >
-                    Upgrade to Pro
-                  </button>
-                )}
                 {billing.portalUser ? (
                   <button
                     type="button"
@@ -225,13 +223,13 @@ export default function DriverAccountSheet({
                   >
                     Manage subscription
                   </button>
-                ) : planTier === "pro" ? (
+                ) : (
                   <span className="text-xs text-muted">
                     Billing portal opens after your first Checkout completes.
                   </span>
-                ) : null}
+                )}
               </div>
-            )}
+            ) : null}
             {fleetEnabled ? (
               <p className="mt-2 text-xs text-muted">
                 Org billing:{" "}
