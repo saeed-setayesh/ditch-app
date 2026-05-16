@@ -39,10 +39,17 @@ export const PLATFORM_KEYS = {
 
 export async function loadPlatformSettingsMap(): Promise<Map<string, string>> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.map;
-  const rows = await prisma.platformSetting.findMany();
-  const map = new Map(rows.map((r) => [r.key, r.value]));
-  cache = { at: Date.now(), map };
-  return map;
+  try {
+    const rows = await prisma.platformSetting.findMany();
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    cache = { at: Date.now(), map };
+    return map;
+  } catch (e) {
+    console.error("[platformSettings] Failed to load settings from DB:", e);
+    const empty = new Map<string, string>();
+    cache = { at: Date.now(), map: empty };
+    return empty;
+  }
 }
 
 export function invalidatePlatformSettingsCache(): void {

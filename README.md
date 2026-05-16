@@ -35,6 +35,22 @@ Or, if you created the DB and migration manually:
 npx prisma migrate deploy
 ```
 
+### Production builds (Railway, Docker, CI)
+
+`npm run build` runs **`prisma generate`** and **`next build`** only. It does **not** run `prisma migrate deploy`, because many build environments cannot reach your Postgres (you would see **P1001** and the deploy never finishes).
+
+After each deploy, apply migrations where `DATABASE_URL` works (release phase, start script, or one-off):
+
+```bash
+npx prisma migrate deploy
+```
+
+If your build container **does** have database access and you want migrations inside the build step (previous behavior), use:
+
+```bash
+npm run build:with-migrate
+```
+
 ### 3. PWA icons (optional)
 
 Add `public/icon-192x192.png` and `public/icon-512x512.png` for the PWA manifest. Without them, install prompts may still work but icons will 404.
