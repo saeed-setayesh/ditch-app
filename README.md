@@ -37,15 +37,17 @@ npx prisma migrate deploy
 
 ### Production builds (Railway, Docker, CI)
 
-`npm run build` runs **`prisma generate`** and **`next build`** only. It does **not** run `prisma migrate deploy`, because many build environments cannot reach your Postgres (you would see **P1001** and the deploy never finishes).
+`npm run build` runs **`prisma generate`** and **`next build`** only (no DB required during the image build in most setups).
 
-After each deploy, apply migrations where `DATABASE_URL` works (release phase, start script, or one-off):
+**Migrations run automatically when the app boots:** `npm start` runs **`prisma migrate deploy`** first (needs **`DATABASE_URL`** at runtime), then **`next start`**.
+
+You can still run migrations manually:
 
 ```bash
 npx prisma migrate deploy
 ```
 
-If your build container **does** have database access and you want migrations inside the build step (previous behavior), use:
+If your **build** environment can reach Postgres and you want migrations inside the build step too, use:
 
 ```bash
 npm run build:with-migrate
