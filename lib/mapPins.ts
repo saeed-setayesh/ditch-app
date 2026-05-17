@@ -46,7 +46,7 @@ function pinColorForKind(type: MapPinKind): string {
     case "accident":
       return "#F38A1F";
     case "collision":
-      return "#E63946";
+      return "#F38A1F";
     case "fire":
       return "#E63946";
     case "hazard":

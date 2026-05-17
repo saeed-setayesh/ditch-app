@@ -12,7 +12,6 @@ import IncidentDetailModal from "@/components/IncidentDetailModal";
 import FilterPanel, { type FilterState } from "@/components/FilterPanel";
 import { categoryMatchesDriverFilters } from "@/lib/driverIncidentFilter";
 import { useDriverDashboardTheme } from "@/components/DriverDashboardTheme";
-import { CITIES } from "@/lib/cities";
 import { haversineKm } from "@/lib/geo";
 import { openNavigation, openWazeNavigation } from "@/lib/navigation";
 import IncidentToast, { type ToastIncident } from "@/components/IncidentToast";
@@ -43,7 +42,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-const INCIDENTS_POLL_MS = 90_000;
+const INCIDENTS_POLL_MS = 60_000;
 const LOCATION_UPDATE_MS = 120_000;
 
 function getOrCreateDeviceId(): string {
@@ -81,7 +80,6 @@ export default function Home() {
   const [heatmapSource, setHeatmapSource] = useState<"platform" | "live">(
     "live",
   );
-  const [cityId, setCityId] = useState("DitchApp");
   const [tier, setTier] = useState<"free" | "pro">("free");
   const [heatmapBlocked, setHeatmapBlocked] = useState(false);
   const [cameraViewIncident, setCameraViewIncident] =
@@ -138,51 +136,58 @@ export default function Home() {
     }).catch(() => {});
   }, []);
 
-  const fetchIncidents = useCallback(
-    async (cid?: string) => {
-      const id = cid ?? cityId;
-      try {
-        const deviceId = getOrCreateDeviceId();
-        const params = new URLSearchParams();
-        if (id) params.set("city", id);
-        if (deviceId) params.set("deviceId", deviceId);
-        const url = `/api/incidents?${params.toString()}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch incidents");
-        const data = await res.json();
-        const newList = data.incidents ?? [];
-        // Detect new incidents for toast notifications (skip first load)
-        if (prevIncidentIdsRef.current.size > 0 && newList.length > 0) {
-          const prevIds = prevIncidentIdsRef.current;
-          const added = newList.filter((i: IncidentForList) => !prevIds.has(i.id));
-          if (added.length > 0) {
-            setToasts((prev) => [
-              ...prev.slice(-2),
-              ...added.slice(0, 3).map((i: IncidentForList) => ({
-                id: i.id,
-                description: i.description ?? "Incident",
-                iconCategory: i.iconCategory,
-              })),
-            ].slice(-3));
-          }
+  const fetchIncidents = useCallback(async () => {
+    if (!userLocation) return;
+    try {
+      const deviceId = getOrCreateDeviceId();
+      const [lng, lat] = userLocation;
+      const params = new URLSearchParams();
+      params.set("lat", String(lat));
+      params.set("lng", String(lng));
+      params.set("radiusKm", String(filters.radiusKm));
+      if (deviceId) params.set("deviceId", deviceId);
+      const url = `/api/incidents?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch incidents");
+      const data = await res.json();
+      const newList = data.incidents ?? [];
+      // Detect new incidents for toast notifications (skip first load)
+      if (prevIncidentIdsRef.current.size > 0 && newList.length > 0) {
+        const prevIds = prevIncidentIdsRef.current;
+        const added = newList.filter((i: IncidentForList) => !prevIds.has(i.id));
+        if (added.length > 0) {
+          setToasts((prev) => [
+            ...prev.slice(-2),
+            ...added.slice(0, 3).map((i: IncidentForList) => ({
+              id: i.id,
+              description: i.description ?? "Incident",
+              iconCategory: i.iconCategory,
+            })),
+          ].slice(-3));
         }
-        prevIncidentIdsRef.current = new Set(newList.map((i: IncidentForList) => i.id));
-        setIncidents(newList);
-        setError(null);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong");
-      } finally {
-        setLoading(false);
       }
-    },
-    [cityId],
-  );
+      prevIncidentIdsRef.current = new Set(newList.map((i: IncidentForList) => i.id));
+      setIncidents(newList);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }, [userLocation, filters.radiusKm]);
 
   useEffect(() => {
-    fetchIncidents(cityId);
-    const t = setInterval(() => fetchIncidents(cityId), INCIDENTS_POLL_MS);
+    if (!userLocation) return;
+    void fetchIncidents();
+    const t = setInterval(() => void fetchIncidents(), INCIDENTS_POLL_MS);
     return () => clearInterval(t);
-  }, [fetchIncidents, cityId]);
+  }, [fetchIncidents, userLocation]);
+
+  useEffect(() => {
+    if (locationError != null && userLocation == null) {
+      setLoading(false);
+    }
+  }, [locationError, userLocation]);
 
   const refreshTierAndSources = useCallback(() => {
     const deviceId = getOrCreateDeviceId();
@@ -297,7 +302,7 @@ export default function Home() {
       ) {
         return false;
       }
-      if (userLocation && filters.radiusKm < 50) {
+      if (userLocation) {
         const [lng, lat] = inc.coordinates;
         const distance = haversineKm(
           userLocation[1],
@@ -375,6 +380,7 @@ export default function Home() {
           incidents={incidentsWithEta}
           userLocation={userLocation}
           selectedId={selectedId}
+          radiusKm={filters.radiusKm}
           onIncidentSelect={(id) => {
             setSelectedId(id);
             setIncidentsPanelOpen(true);
@@ -384,7 +390,9 @@ export default function Home() {
           }}
           heatmapOn={heatmapOn}
           heatmapPeriod={heatmapPeriod}
-          heatmapCityId={cityId}
+          heatmapCityId="DitchApp"
+          heatmapLiveCenter={userLocation}
+          heatmapLiveRadiusKm={filters.radiusKm}
           heatmapDeviceId={getOrCreateDeviceId() || null}
           heatmapSource={heatmapSource}
           onHeatmapBlocked={() => {
@@ -427,32 +435,6 @@ export default function Home() {
             </button>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <select
-              id="city-select"
-              aria-label="City"
-              value={cityId}
-              onChange={async (e) => {
-                const id = e.target.value;
-                setCityId(id);
-                try {
-                  const deviceId = getOrCreateDeviceId();
-                  await fetch("/api/push/preferences", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deviceId, cityId: id }),
-                  });
-                } catch {
-                  // ignore
-                }
-              }}
-              className="rounded-lg border border-ink/12 bg-paper px-2 py-1.5 text-sm text-ink shadow-sm focus:border-sky focus:outline-none focus:ring-2 focus:ring-sky/25"
-            >
-              {CITIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
             <button
               type="button"
               onClick={() => setFilterPanelOpen(true)}
@@ -714,12 +696,11 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-ink/10 bg-paper shadow-xl">
             <AlertPreferences
-              initialCityId={cityId}
+              initialCityId="DitchApp"
               initialTier={tier}
               initialIncidentSources={userIncidentSources}
               onClose={() => setPrefsOpen(false)}
               onSaved={(prefs) => {
-                if (prefs.cityId) setCityId(prefs.cityId);
                 if (prefs.incidentSources)
                   setUserIncidentSources(prefs.incidentSources);
                 const deviceId = getOrCreateDeviceId();
@@ -782,35 +763,6 @@ export default function Home() {
                 )}
               </div>
             </button>
-            <div className="space-y-2">
-              <label className="mb-1 block text-sm font-medium text-ink">
-                City
-              </label>
-              <select
-                value={cityId}
-                onChange={async (e) => {
-                  const id = e.target.value;
-                  setCityId(id);
-                  try {
-                    const deviceId = getOrCreateDeviceId();
-                    await fetch("/api/push/preferences", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ deviceId, cityId: id }),
-                    });
-                  } catch {
-                    // ignore
-                  }
-                }}
-                className="w-full rounded-lg border border-ink/15 bg-ice/50 px-3 py-2.5 text-ink"
-              >
-                {CITIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
             <button
               type="button"
               onClick={() => {

@@ -5,7 +5,11 @@ import { getCityById, getDefaultCity } from "@/lib/cities";
 import { prisma } from "@/lib/db";
 import { fetchOntario511Incidents } from "@/lib/ontario511";
 import { fetchInrixIncidents } from "@/lib/inrix";
-import { haversineKm } from "@/lib/geo";
+import {
+  bboxFromCenterRadiusKm,
+  haversineKm,
+  MAX_INCIDENT_FETCH_RADIUS_KM,
+} from "@/lib/geo";
 import { getSessionUserId } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -19,13 +23,39 @@ export type IncidentWithScore = NormalizedIncident & {
 
 export async function GET(request: NextRequest) {
   try {
-    const cityId = request.nextUrl.searchParams.get("city");
-    const minScoreParam = request.nextUrl.searchParams.get("minScore");
+    const sp = request.nextUrl.searchParams;
+    const cityId = sp.get("city");
+    const latRaw = sp.get("lat");
+    const lngRaw = sp.get("lng");
+    const radiusRaw = sp.get("radiusKm");
+    const minScoreParam = sp.get("minScore");
     const minScore = minScoreParam != null ? parseInt(minScoreParam, 10) : null;
-    const deviceId = request.nextUrl.searchParams.get("deviceId");
+    const deviceId = sp.get("deviceId");
+
+    const lat = latRaw != null ? Number(latRaw) : NaN;
+    const lng = lngRaw != null ? Number(lngRaw) : NaN;
+    const radiusInput = radiusRaw != null ? Number(radiusRaw) : NaN;
+    const radiusKmGeo = Number.isFinite(radiusInput)
+      ? Math.min(
+          MAX_INCIDENT_FETCH_RADIUS_KM,
+          Math.max(1, radiusInput),
+        )
+      : NaN;
+
+    const useGeoRadius =
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -85 &&
+      lat <= 85 &&
+      lng >= -180 &&
+      lng <= 180 &&
+      Number.isFinite(radiusInput) &&
+      radiusInput >= 1;
 
     const city = cityId ? getCityById(cityId) : getDefaultCity();
-    const bbox = city?.bbox ?? getDefaultCity().bbox;
+    const bbox = useGeoRadius
+      ? bboxFromCenterRadiusKm(lat, lng, radiusKmGeo)
+      : city?.bbox ?? getDefaultCity().bbox;
     // Determine preferred incident sources via session or deviceId
     const userId = await getSessionUserId();
     let sources: string[] = ["tomtom"];
@@ -202,15 +232,23 @@ export async function GET(request: NextRequest) {
       const t = inc.lastReportTime ?? inc.startTime;
       return t ? new Date(t).getTime() : 0;
     };
-    const sorted = [...recentWindow].sort((a, b) => {
+    let sorted = [...recentWindow].sort((a, b) => {
       const timeA = getIncidentTime(a);
       const timeB = getIncidentTime(b);
       if (timeB !== timeA) return timeB - timeA; // newest first
       return b.towScore - a.towScore; // then by severity
     });
+
+    if (useGeoRadius) {
+      sorted = sorted.filter((inc) => {
+        const [ilng, ilat] = inc.coordinates;
+        return haversineKm(lat, lng, ilat, ilng) <= radiusKmGeo + 1e-6;
+      });
+    }
+
     return NextResponse.json({
       incidents: sorted,
-      city: city?.name ?? getDefaultCity().name,
+      city: useGeoRadius ? "Near you" : city?.name ?? getDefaultCity().name,
     });
   } catch (e) {
     console.error("Incidents API error:", e);

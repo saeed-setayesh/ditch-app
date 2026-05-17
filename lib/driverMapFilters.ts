@@ -1,4 +1,8 @@
 import type { FilterState, IncidentType } from "@/components/FilterPanel";
+import {
+  DRIVER_MAP_RADIUS_MAX_KM,
+  DRIVER_MAP_RADIUS_MIN_KM,
+} from "@/lib/driverMapRadius";
 
 const STORAGE_KEY = "traficapp_driver_map_filters";
 
@@ -44,7 +48,10 @@ export function parseDriverMapFiltersJson(raw: unknown): FilterState | null {
   const incidentTypes = normalizeIncidentTypes(o.incidentTypes);
   let radiusKm = DEFAULT_DRIVER_MAP_FILTERS.radiusKm;
   if (typeof o.radiusKm === "number" && Number.isFinite(o.radiusKm)) {
-    radiusKm = Math.min(50, Math.max(1, Math.round(o.radiusKm)));
+    radiusKm = Math.min(
+      DRIVER_MAP_RADIUS_MAX_KM,
+      Math.max(DRIVER_MAP_RADIUS_MIN_KM, Math.round(o.radiusKm)),
+    );
   }
   let showTrafficFlow = DEFAULT_DRIVER_MAP_FILTERS.showTrafficFlow;
   if (typeof o.showTrafficFlow === "boolean") {

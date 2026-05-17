@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import type { IncidentType } from "./IncidentIcons";
 import { CollisionGlyph } from "./IncidentIcons";
+import {
+  DRIVER_MAP_RADIUS_MAX_KM,
+  DRIVER_MAP_RADIUS_MIN_KM,
+} from "@/lib/driverMapRadius";
 
 export type { IncidentType };
 
@@ -91,7 +95,11 @@ export default function FilterPanel({
 
   if (!isOpen) return null;
 
-  const radiusPct = ((localFilters.radiusKm - 1) / 49) * 100;
+  const span = DRIVER_MAP_RADIUS_MAX_KM - DRIVER_MAP_RADIUS_MIN_KM;
+  const radiusPct =
+    span > 0
+      ? ((localFilters.radiusKm - DRIVER_MAP_RADIUS_MIN_KM) / span) * 100
+      : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 md:items-center md:justify-center md:bg-black/50 md:p-4">
@@ -182,20 +190,18 @@ export default function FilterPanel({
                   Radius to Monitor
                 </h3>
                 <span className="font-mono-brand text-sm font-semibold text-deep">
-                  {localFilters.radiusKm === 50
-                    ? "All"
-                    : `${localFilters.radiusKm} km`}
+                  {localFilters.radiusKm} km
                 </span>
               </div>
               <div className="space-y-2 px-1.5">
                 <div className="flex justify-between font-mono-brand text-[11px] font-semibold text-muted">
-                  <span>1 KM</span>
-                  <span>50 KM (All)</span>
+                  <span>{DRIVER_MAP_RADIUS_MIN_KM} km</span>
+                  <span>{DRIVER_MAP_RADIUS_MAX_KM} km</span>
                 </div>
                 <input
                   type="range"
-                  min="1"
-                  max="50"
+                  min={DRIVER_MAP_RADIUS_MIN_KM}
+                  max={DRIVER_MAP_RADIUS_MAX_KM}
                   step="1"
                   value={localFilters.radiusKm}
                   onChange={(e) => handleRadiusChange(Number(e.target.value))}
@@ -205,7 +211,8 @@ export default function FilterPanel({
                   }}
                 />
                 <p className="text-center text-xs italic text-muted">
-                  Set to 50 to show all incidents regardless of distance
+                  Incidents load around your location inside this radius (North
+                  America).
                 </p>
               </div>
             </div>

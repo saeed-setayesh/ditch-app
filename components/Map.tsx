@@ -2,12 +2,30 @@
 
 import { useEffect, useRef, useState } from "react";
 import "@tomtom-international/web-sdk-maps/dist/maps.css";
-import { getCityById } from "@/lib/cities";
 import {
   buildIncidentPinHtml,
   capIncidentsForMap,
   incidentsMarkerKey,
 } from "@/lib/mapPins";
+import { circlePolygonGeoJson } from "@/lib/geo";
+
+/** Default view before GPS — continental North America */
+const DEFAULT_MAP_CENTER: [number, number] = [-98.5795, 39.8283];
+const DEFAULT_MAP_ZOOM = 4;
+
+const HEATMAP_SOURCE_ID = "heatmap-incidents-source";
+const HEATMAP_LAYER_ID = "heatmap-incidents-layer";
+const RADIUS_SOURCE_ID = "driver-monitor-radius-source";
+const RADIUS_FILL_LAYER_ID = "driver-monitor-radius-fill";
+const RADIUS_LINE_LAYER_ID = "driver-monitor-radius-line";
+
+function zoomForMonitorRadiusKm(radiusKm: number): number {
+  if (radiusKm <= 30) return 11;
+  if (radiusKm <= 55) return 10;
+  if (radiusKm <= 85) return 9;
+  if (radiusKm <= 120) return 8.5;
+  return 8;
+}
 
 export type IncidentForMap = {
   id: string;
@@ -28,10 +46,15 @@ type MapProps = {
   heatmapOn?: boolean;
   heatmapPeriod?: string;
   heatmapCityId?: string;
+  /** When live heatmap is on, TomTom bbox follows this center + radius (km). */
+  heatmapLiveCenter?: [number, number] | null;
+  heatmapLiveRadiusKm?: number;
   heatmapDeviceId?: string | null;
   heatmapSource?: "platform" | "live";
   onHeatmapBlocked?: () => void;
   showTrafficFlow?: boolean;
+  /** Monitoring radius (km) — GeoJSON ring around `userLocation`. */
+  radiusKm?: number;
   /** TomTom base map palette; driver dashboard passes theme here. */
   colorScheme?: MapColorScheme;
 };
@@ -41,9 +64,6 @@ type TomTomMap = {
   flyTo: (opts: { center: [number, number]; zoom?: number }) => void;
 };
 type TomTomMarker = { remove: () => void };
-
-const HEATMAP_SOURCE_ID = "heatmap-incidents-source";
-const HEATMAP_LAYER_ID = "heatmap-incidents-layer";
 
 /** TomTom merged style (see Map Display API — merged style method). */
 function mergedTomTomStyle(scheme: MapColorScheme) {
@@ -71,10 +91,13 @@ export default function Map({
   heatmapOn = false,
   heatmapPeriod = "week",
   heatmapCityId = "DitchApp",
+  heatmapLiveCenter = null,
+  heatmapLiveRadiusKm,
   heatmapDeviceId = null,
   heatmapSource = "platform",
   onHeatmapBlocked,
   showTrafficFlow = false,
+  radiusKm = 50,
   colorScheme = "light",
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,13 +147,12 @@ export default function Map({
       if (cancelled) return;
       ttRef.current = tt;
 
-      const city = getCityById(heatmapCityId);
       const scheme = colorSchemeRef.current;
       const map = tt.map({
         key,
         container: containerEl,
-        center: (city?.center as [number, number]) ?? [-79.3832, 43.6532],
-        zoom: 11,
+        center: DEFAULT_MAP_CENTER,
+        zoom: DEFAULT_MAP_ZOOM,
         style: mergedTomTomStyle(scheme),
         stylesVisibility: {
           trafficFlow: showTrafficFlow,
@@ -318,14 +340,14 @@ export default function Map({
   }, [selectedId, incidents]);
 
   useEffect(() => {
-    if (!ready || !mapRef.current) return;
-    const city = getCityById(heatmapCityId);
-    if (city?.center)
-      mapRef.current.flyTo({
-        center: city.center as [number, number],
-        zoom: 11,
-      });
-  }, [ready, heatmapCityId]);
+    if (!ready || !mapRef.current || userLocation == null) return;
+    if (selectedId) return;
+    const [lng, lat] = userLocation;
+    mapRef.current.flyTo({
+      center: [lng, lat],
+      zoom: zoomForMonitorRadiusKm(radiusKm),
+    });
+  }, [ready, userLocation, radiusKm, selectedId]);
 
   // Update traffic flow visibility using TomTom's showTrafficFlow/hideTrafficFlow
   useEffect(() => {
@@ -344,6 +366,96 @@ export default function Map({
       console.warn("Traffic flow toggle failed:", e);
     }
   }, [ready, showTrafficFlow, mapStyleEpoch]);
+
+  /** Monitoring radius ring (rival-style soft circle). */
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current as TomTomMap & {
+      addSource: (id: string, source: { type: string; data: unknown }) => void;
+      addLayer: (layer: {
+        id: string;
+        source: string;
+        type: string;
+        paint?: Record<string, unknown>;
+      }) => void;
+      removeLayer: (id: string) => void;
+      removeSource: (id: string) => void;
+      getLayer: (id: string) => unknown;
+      getSource: (id: string) => unknown;
+      isStyleLoaded?: () => boolean;
+      once?: (event: string, fn: () => void) => void;
+    };
+
+    const removeRadius = () => {
+      try {
+        if (map.getLayer?.(RADIUS_LINE_LAYER_ID))
+          map.removeLayer(RADIUS_LINE_LAYER_ID);
+        if (map.getLayer?.(RADIUS_FILL_LAYER_ID))
+          map.removeLayer(RADIUS_FILL_LAYER_ID);
+        if (map.getSource?.(RADIUS_SOURCE_ID))
+          map.removeSource(RADIUS_SOURCE_ID);
+      } catch {
+        // ignore
+      }
+    };
+
+    if (!userLocation || radiusKm < 1) {
+      removeRadius();
+      return;
+    }
+
+    const [lng, lat] = userLocation;
+    const data = circlePolygonGeoJson(lat, lng, radiusKm);
+    removeRadius();
+
+    const addRadiusLayers = () => {
+      try {
+        map.addSource(RADIUS_SOURCE_ID, {
+          type: "geojson",
+          data,
+        });
+        map.addLayer({
+          id: RADIUS_FILL_LAYER_ID,
+          type: "fill",
+          source: RADIUS_SOURCE_ID,
+          paint: {
+            "fill-color": colorScheme === "dark" ? "#3b82f6" : "#60a5fa",
+            "fill-opacity": 0.1,
+          },
+        });
+        map.addLayer({
+          id: RADIUS_LINE_LAYER_ID,
+          type: "line",
+          source: RADIUS_SOURCE_ID,
+          paint: {
+            "line-color": colorScheme === "dark" ? "#93c5fd" : "#2563eb",
+            "line-width": 2,
+            "line-opacity": 0.9,
+          },
+        });
+      } catch (e) {
+        console.warn("Radius layer error:", e);
+      }
+    };
+
+    if (typeof map.isStyleLoaded === "function" && map.isStyleLoaded()) {
+      addRadiusLayers();
+    } else if (typeof map.once === "function") {
+      map.once("load", addRadiusLayers);
+    } else {
+      addRadiusLayers();
+    }
+
+    return () => {
+      removeRadius();
+    };
+  }, [
+    ready,
+    userLocation,
+    radiusKm,
+    colorScheme,
+    mapStyleEpoch,
+  ]);
 
   useEffect(() => {
     if (!ready || !mapRef.current) return;
@@ -385,6 +497,17 @@ export default function Map({
       source: heatmapSource,
     });
     if (heatmapDeviceId) params.set("deviceId", heatmapDeviceId);
+    if (
+      heatmapSource === "live" &&
+      heatmapLiveCenter &&
+      heatmapLiveRadiusKm != null &&
+      heatmapLiveRadiusKm >= 1
+    ) {
+      const [hlng, hlat] = heatmapLiveCenter;
+      params.set("lat", String(hlat));
+      params.set("lng", String(hlng));
+      params.set("radiusKm", String(heatmapLiveRadiusKm));
+    }
     fetch(`/api/heatmap?${params.toString()}`)
       .then((r) => {
         if (r.status === 402) {
@@ -484,6 +607,8 @@ export default function Map({
     heatmapOn,
     heatmapPeriod,
     heatmapCityId,
+    heatmapLiveCenter,
+    heatmapLiveRadiusKm,
     heatmapDeviceId,
     heatmapSource,
     onHeatmapBlocked,

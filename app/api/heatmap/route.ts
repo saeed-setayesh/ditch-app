@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bboxFromCenterRadiusKm, haversineKm, MAX_INCIDENT_FETCH_RADIUS_KM } from "@/lib/geo";
 import { prisma } from "@/lib/db";
 import { CITIES, getCityById } from "@/lib/cities";
 import { fetchIncidentDetails, normalizeIncidents } from "@/lib/tomtom";
@@ -30,6 +31,29 @@ export async function GET(request: NextRequest) {
   const city = getCityConfig(cityParam);
   const cityName = city.name;
 
+  const latRaw = searchParams.get("lat");
+  const lngRaw = searchParams.get("lng");
+  const radiusRaw = searchParams.get("radiusKm");
+  const lat = latRaw != null ? Number(latRaw) : NaN;
+  const lng = lngRaw != null ? Number(lngRaw) : NaN;
+  const radiusInput = radiusRaw != null ? Number(radiusRaw) : NaN;
+  const radiusKmGeo = Number.isFinite(radiusInput)
+    ? Math.min(
+        MAX_INCIDENT_FETCH_RADIUS_KM,
+        Math.max(1, radiusInput),
+      )
+    : NaN;
+  const liveGeoOk =
+    source === "live" &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -85 &&
+    lat <= 85 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    Number.isFinite(radiusInput) &&
+    radiusInput >= 1;
+
   const periodMs = PERIOD_MS[period] ?? PERIOD_MS.week;
   const toDate = new Date();
   const fromDate = new Date(toDate.getTime() - periodMs);
@@ -44,13 +68,22 @@ export async function GET(request: NextRequest) {
 
   try {
     if (source === "live") {
-      const { incidents } = await fetchIncidentDetails(city.bbox);
-      const normalized = normalizeIncidents(incidents);
+      const bbox = liveGeoOk
+        ? bboxFromCenterRadiusKm(lat, lng, radiusKmGeo)
+        : city.bbox;
+      const { incidents } = await fetchIncidentDetails(bbox);
+      let normalized = normalizeIncidents(incidents);
+      if (liveGeoOk) {
+        normalized = normalized.filter((inc) => {
+          const [ilng, ilat] = inc.coordinates;
+          return haversineKm(lat, lng, ilat, ilng) <= radiusKmGeo + 1e-6;
+        });
+      }
       const gridPrecision = 3;
       const cells: Record<string, number> = {};
       for (const inc of normalized) {
-        const [lng, lat] = inc.coordinates;
-        const key = `${lat.toFixed(gridPrecision)},${lng.toFixed(gridPrecision)}`;
+        const [incLng, incLat] = inc.coordinates;
+        const key = `${incLat.toFixed(gridPrecision)},${incLng.toFixed(gridPrecision)}`;
         cells[key] = (cells[key] ?? 0) + 1;
       }
       const points = Object.entries(cells).map(([key, weight]) => {
@@ -66,7 +99,7 @@ export async function GET(request: NextRequest) {
         })),
       };
       return NextResponse.json({
-        city: cityName,
+        city: liveGeoOk ? "Near you" : cityName,
         period: "live",
         source: "live",
         from: toDate.toISOString(),
